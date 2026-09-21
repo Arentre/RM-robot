@@ -13,8 +13,8 @@
 /* Private macro ------------------------------------------------------------ */
 /* Private variables -------------------------------------------------------- */
 volatile uint8_t gimbal_pitch_protect_active = 0U;
-volatile uint8_t gimbal_ladrc_yaw_enable = 0U;
-volatile uint8_t gimbal_ladrc_pit_enable = 0U;
+volatile uint8_t gimbal_ladrc_yaw_enable = 1U;
+volatile uint8_t gimbal_ladrc_pit_enable = 1U;
 
 /* 保守的首次上电参数。b0必须结合云台负载实机辨识。 */
 volatile LADRC_Params_t gimbal_ladrc_yaw_param = {

@@ -113,7 +113,7 @@ typedef struct {
 
 } Gimbal_t;
 
-/* Keil Watch调试入口：默认关闭，不改变现有Yaw PID和Pitch零输出。 */
+/* Keil Watch调试入口：默认使用LADRC，置0可逐轴回退。 */
 extern volatile uint8_t gimbal_ladrc_yaw_enable;
 extern volatile uint8_t gimbal_ladrc_pit_enable;
 extern volatile LADRC_Params_t gimbal_ladrc_yaw_param;
