@@ -116,6 +116,13 @@ void Task_Info(void *argument) {
     yaw_rate_err = gimbal.pid[GIMBAL_PID_YAW_OMEGA_IDX].last.err;
     yaw_out = gimbal.out[GIMBAL_ACTR_YAW_IDX];
     yaw_encoder = gimbal.feedback.eulr.encoder.yaw;
+    if (gimbal_ladrc_yaw_enable != 0U) {
+      pid_angle_err = gimbal.ladrc[GIMBAL_ACTR_YAW_IDX].v1 -
+                      gimbal.ladrc[GIMBAL_ACTR_YAW_IDX].z1;
+      yaw_rate_sp = gimbal.ladrc[GIMBAL_ACTR_YAW_IDX].v2;
+      yaw_rate_err = gimbal.ladrc[GIMBAL_ACTR_YAW_IDX].v2 -
+                     gimbal.ladrc[GIMBAL_ACTR_YAW_IDX].z2;
+    }
     pitch_protect = gimbal_pitch_protect_active;
     mode = (uint8_t)gimbal.mode;
     enable = gimbal_test_enable;
@@ -137,7 +144,8 @@ void Task_Info(void *argument) {
 
     /* FireWater yaw channels, in order:
      * target/feedback continuous angle (deg), angular speed (deg/s),
-     * signed angle error (deg), PID angle error (deg), target/error speed
+     * signed angle error (deg), active controller angle error (deg),
+     * target/error speed
      * (deg/s), motor output (unchanged), encoder angle (0..360 deg),
      * pitch_protect, mode, enable.
      */

@@ -13,7 +13,44 @@
 /* Private macro ------------------------------------------------------------ */
 /* Private variables -------------------------------------------------------- */
 volatile uint8_t gimbal_pitch_protect_active = 0U;
+volatile uint8_t gimbal_ladrc_yaw_enable = 0U;
+volatile uint8_t gimbal_ladrc_pit_enable = 0U;
+
+/* 保守的首次上电参数。b0必须结合云台负载实机辨识。 */
+volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
+    .r = 4.0f, .b0 = 100.0f, .wc = 1.0f, .out_limit = 0.03f};
+volatile LADRC_Params_t gimbal_ladrc_pit_param = {
+    .r = 4.0f, .b0 = 100.0f, .wc = 1.0f, .out_limit = 0.03f};
 /* Private function  -------------------------------------------------------- */
+
+static uint8_t Gimbal_LADRCParamChanged(
+    const LADRC_t *ctrl, const volatile LADRC_Params_t *param) {
+  return ctrl->param.r != param->r || ctrl->param.b0 != param->b0 ||
+         ctrl->param.wc != param->wc ||
+         ctrl->param.out_limit != param->out_limit;
+}
+
+static float Gimbal_LADRCControl(LADRC_t *ctrl,
+                                 const volatile LADRC_Params_t *param,
+                                 uint8_t *active, float setpoint,
+                                 float feedback, float angular_speed,
+                                 float sample_time) {
+  if (*active == 0U || Gimbal_LADRCParamChanged(ctrl, param)) {
+    if (LADRC_Init(ctrl, param, sample_time) != 0) {
+      *active = 0U;
+      return 0.0f;
+    }
+    LADRC_Reset(ctrl, feedback, angular_speed);
+    *active = 1U;
+  }
+
+  /* 将±pi反馈映射到观测器附近，并把目标映射为最短路径等效角。 */
+  const float feedback_continuous =
+      ctrl->z1 + CircleError(feedback, ctrl->z1, M_2PI);
+  const float reference_continuous =
+      feedback_continuous + CircleError(setpoint, feedback, M_2PI);
+  return LADRC_Update(ctrl, reference_continuous, feedback_continuous);
+}
 
 /**
  * \brief 设置云台模式
@@ -82,6 +119,14 @@ int8_t Gimbal_Init(Gimbal_t *g, const Gimbal_Params_t *param, float limit_max,
            &(g->param->pid[GIMBAL_PID_PIT_ANGLE_IDX]));
   PID_Init(&(g->pid[GIMBAL_PID_PIT_OMEGA_IDX]), KPID_MODE_CALC_D, target_freq,
            &(g->param->pid[GIMBAL_PID_PIT_OMEGA_IDX]));
+
+  const float sample_time = 1.0f / target_freq;
+  LADRC_Init(&(g->ladrc[GIMBAL_ACTR_YAW_IDX]), &gimbal_ladrc_yaw_param,
+             sample_time);
+  LADRC_Init(&(g->ladrc[GIMBAL_ACTR_PIT_IDX]), &gimbal_ladrc_pit_param,
+             sample_time);
+  g->ladrc_active[GIMBAL_ACTR_YAW_IDX] = 0U;
+  g->ladrc_active[GIMBAL_ACTR_PIT_IDX] = 0U;
 
   for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) {
     LowPassFilter2p_Init(g->filter_out + i, target_freq,
@@ -161,6 +206,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
   switch (g->mode) {
     case GIMBAL_MODE_RELAX:
       for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->out[i] = 0.0f;
+      for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->ladrc_active[i] = 0U;
       break;
 
     case GIMBAL_MODE_ABSOLUTE:
@@ -170,30 +216,68 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
         gimbal_pitch_protect_active = 1U;
         for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->out[i] = 0.0f;
         for (uint8_t i = 0; i < GIMBAL_PID_NUM; i++) PID_Reset(g->pid + i);
+        for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->ladrc_active[i] = 0U;
         break;
       }
       gimbal_pitch_protect_active = 0U;
 
-      yaw_omega_set_point =
-          PID_Calc(&(g->pid[GIMBAL_PID_YAW_ANGLE_IDX]), g->setpoint.eulr.yaw,
-                   g->feedback.eulr.imu.yaw, 0.0f, g->dt);
-      g->out[GIMBAL_ACTR_YAW_IDX] =
-          PID_Calc(&(g->pid[GIMBAL_PID_YAW_OMEGA_IDX]), yaw_omega_set_point,
-                   g->feedback.gyro.z, 0.f, g->dt);
+      if (gimbal_ladrc_yaw_enable != 0U) {
+        if (g->ladrc_active[GIMBAL_ACTR_YAW_IDX] == 0U ||
+            Gimbal_LADRCParamChanged(
+                &(g->ladrc[GIMBAL_ACTR_YAW_IDX]),
+                &gimbal_ladrc_yaw_param))
+          LowPassFilter2p_Reset(
+              &(g->filter_out[GIMBAL_ACTR_YAW_IDX]), 0.0f);
+        g->out[GIMBAL_ACTR_YAW_IDX] = Gimbal_LADRCControl(
+            &(g->ladrc[GIMBAL_ACTR_YAW_IDX]), &gimbal_ladrc_yaw_param,
+            &(g->ladrc_active[GIMBAL_ACTR_YAW_IDX]), g->setpoint.eulr.yaw,
+            g->feedback.eulr.imu.yaw, g->feedback.gyro.z,
+            g->ladrc[GIMBAL_ACTR_YAW_IDX].T);
+      } else {
+        if (g->ladrc_active[GIMBAL_ACTR_YAW_IDX] != 0U) {
+          PID_Reset(&(g->pid[GIMBAL_PID_YAW_ANGLE_IDX]));
+          PID_Reset(&(g->pid[GIMBAL_PID_YAW_OMEGA_IDX]));
+          LowPassFilter2p_Reset(
+              &(g->filter_out[GIMBAL_ACTR_YAW_IDX]), 0.0f);
+        }
+        g->ladrc_active[GIMBAL_ACTR_YAW_IDX] = 0U;
+        yaw_omega_set_point = PID_Calc(
+            &(g->pid[GIMBAL_PID_YAW_ANGLE_IDX]), g->setpoint.eulr.yaw,
+            g->feedback.eulr.imu.yaw, 0.0f, g->dt);
+        g->out[GIMBAL_ACTR_YAW_IDX] = PID_Calc(
+            &(g->pid[GIMBAL_PID_YAW_OMEGA_IDX]), yaw_omega_set_point,
+            g->feedback.gyro.z, 0.f, g->dt);
+      }
 
-      /* Yaw-only tuning: keep ID6/Pitch at zero until its axis is calibrated. */
-      g->out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
+      if (gimbal_ladrc_pit_enable != 0U) {
+        if (g->ladrc_active[GIMBAL_ACTR_PIT_IDX] == 0U ||
+            Gimbal_LADRCParamChanged(
+                &(g->ladrc[GIMBAL_ACTR_PIT_IDX]),
+                &gimbal_ladrc_pit_param))
+          LowPassFilter2p_Reset(
+              &(g->filter_out[GIMBAL_ACTR_PIT_IDX]), 0.0f);
+        g->out[GIMBAL_ACTR_PIT_IDX] = Gimbal_LADRCControl(
+            &(g->ladrc[GIMBAL_ACTR_PIT_IDX]), &gimbal_ladrc_pit_param,
+            &(g->ladrc_active[GIMBAL_ACTR_PIT_IDX]), g->setpoint.eulr.pit,
+            g->feedback.eulr.imu.pit, g->feedback.gyro.y,
+            g->ladrc[GIMBAL_ACTR_PIT_IDX].T);
+      } else {
+        /* Yaw-only baseline: ID6 remains zero until Pitch LADRC is enabled. */
+        g->ladrc_active[GIMBAL_ACTR_PIT_IDX] = 0U;
+        g->out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
+      }
       break;
 
     case GIMBAL_MODE_RELATIVE:
       for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->out[i] = 0.0f;
+      for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->ladrc_active[i] = 0U;
       break;
   }
 
   /* 输出滤波 */
   for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++)
     g->out[i] = LowPassFilter2p_Apply(g->filter_out + i, g->out[i]);
-  g->out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
+  if (gimbal_ladrc_pit_enable == 0U) g->out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
 
   /* 处理电机反装 */
   if (g->param->reverse.yaw)

@@ -12,6 +12,7 @@ extern "C" {
 #include "component\ahrs.h"
 #include "component\cmd.h"
 #include "component\filter.h"
+#include "component\ladrc.h"
 #include "component\pid.h"
 #include "device\bmi088.h"
 #include "device\can.h"
@@ -99,6 +100,9 @@ typedef struct {
 
   KPID_t pid[GIMBAL_PID_NUM]; /* PID数组 */
 
+  LADRC_t ladrc[GIMBAL_ACTR_NUM]; /* Yaw/Pitch二阶LADRC */
+  uint8_t ladrc_active[GIMBAL_ACTR_NUM];
+
   Gimbal_Limit_t limit;
 
   LowPassFilter2p_t filter_out[GIMBAL_ACTR_NUM]; /* 输出滤波器滤波器数组 */
@@ -108,6 +112,12 @@ typedef struct {
   Gimbal_Feedback_t feedback; /* 反馈 */
 
 } Gimbal_t;
+
+/* Keil Watch调试入口：默认关闭，不改变现有Yaw PID和Pitch零输出。 */
+extern volatile uint8_t gimbal_ladrc_yaw_enable;
+extern volatile uint8_t gimbal_ladrc_pit_enable;
+extern volatile LADRC_Params_t gimbal_ladrc_yaw_param;
+extern volatile LADRC_Params_t gimbal_ladrc_pit_param;
 
 /* Exported functions prototypes -------------------------------------------- */
 
