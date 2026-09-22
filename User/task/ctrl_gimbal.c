@@ -33,6 +33,8 @@ static Referee_GimbalUI_t gimbal_ui;
 volatile uint8_t gimbal_test_enable = 0U;
 extern volatile float gimbal_yaw_target_rad;
 extern volatile uint8_t gimbal_yaw_target_valid;
+extern volatile float gimbal_pit_target_rad;
+extern volatile uint8_t gimbal_pit_target_valid;
 
 /* Private function --------------------------------------------------------- */
 /* Exported functions ------------------------------------------------------- */
@@ -86,8 +88,15 @@ void Task_CtrlGimbal(void *argument) {
 
     osKernelLock(); /* 锁住RTOS内核防止控制过程中断，造成错误 */
     Gimbal_UpdateFeedback(&gimbal, &can);
-    if (gimbal.mode == GIMBAL_MODE_ABSOLUTE && gimbal_yaw_target_valid != 0U)
-      gimbal.setpoint.eulr.yaw = gimbal_yaw_target_rad;
+    if (gimbal.mode == GIMBAL_MODE_ABSOLUTE) {
+      if (gimbal_yaw_target_valid != 0U)
+        gimbal.setpoint.eulr.yaw = gimbal_yaw_target_rad;
+      if (gimbal_pit_target_valid != 0U)
+        /* Gimbal_Control reverses the command once, then applies the existing
+         * encoder-based Pitch travel limit before changing the setpoint. */
+        gimbal_cmd.delta_eulr.pit = -CircleError(
+            gimbal_pit_target_rad, gimbal.setpoint.eulr.pit, M_2PI);
+    }
     Gimbal_Control(&gimbal, &gimbal_cmd, tick);
     Gimbal_DumpOutput(&gimbal, &gimbal_out);
 
