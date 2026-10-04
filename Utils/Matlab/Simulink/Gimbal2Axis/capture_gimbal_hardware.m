@@ -3,10 +3,14 @@ function data = capture_gimbal_hardware(port, duration_s)
 % port may be a serialport object or a COM port name such as "COM7".
 if nargin < 2, duration_s = 10; end
 validateattributes(duration_s, {'numeric'}, {'scalar','finite','positive'});
-if isa(port, 'serialport')
+if ischar(port) || (isstring(port) && isscalar(port))
+    s = serialport(port, 115200);
+elseif isobject(port) && isprop(port, 'NumBytesAvailable')
+    % In R2024a the public serialport object may report its implementation
+    % class as internal.Serialport, so do not rely on isa(port,'serialport').
     s = port;
 else
-    s = serialport(port, 115200);
+    error('port must be a COM port name or an existing serialport object.');
 end
 configureTerminator(s, 'LF');
 s.Timeout = 1;
