@@ -104,6 +104,8 @@ typedef struct {
   uint8_t ladrc_active[GIMBAL_ACTR_NUM];
 
   Gimbal_Limit_t limit;
+  float pit_control_target; /* Limited LADRC reference, rad. */
+  uint8_t pit_limit_active;
 
   LowPassFilter2p_t filter_out[GIMBAL_ACTR_NUM]; /* 输出滤波器滤波器数组 */
 

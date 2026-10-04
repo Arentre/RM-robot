@@ -77,6 +77,8 @@ static const Config_RobotParam_t param_default = {
 //        .out_limit = 10.0f,
 //        .d_cutoff_freq = -1.0f,
 //        .range = M_2PI,
+
+
 				/* GIMBAL_PID_YAW_OMEGA_IDX: conservative single-motor test */
         .k = 0.05f,
         .p = 1.0f,
@@ -96,6 +98,7 @@ static const Config_RobotParam_t param_default = {
         .out_limit = 2.0f,
         .d_cutoff_freq = -1.0f,
         .range = M_2PI,
+        
       }, {
 //        /* GIMBAL_PID_PIT_OMEGA_IDX */
 //        .k = 0.35f,

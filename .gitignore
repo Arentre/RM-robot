@@ -1,0 +1,5 @@
+# MATLAB local settings and generated simulation caches
+MathWorks/
+Utils/Matlab/Simulink/Gimbal2Axis/matlab_prefs_temp/
+Utils/Matlab/Simulink/Gimbal2Axis/slprj/
+Utils/Matlab/Simulink/Gimbal2Axis/*.slxc

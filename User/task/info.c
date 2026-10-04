@@ -81,6 +81,8 @@ void Task_Info(void *argument) {
   float yaw_fb_continuous = 0.0f;
   float last_yaw_fb = 0.0f;
   uint8_t yaw_fb_ready = 0U;
+  float pit_display_offset = 0.0f;
+  uint8_t pit_fb_ready = 0U;
   uint32_t tick = osKernelGetTickCount();
   while (1) {
 #ifdef DEBUG
@@ -122,6 +124,9 @@ void Task_Info(void *argument) {
     float pit_rate_err;
     float pit_out;
     float pit_encoder;
+    float pit_control_target;
+    float pit_ladrc_output;
+    uint8_t pit_limit_active;
     uint8_t pitch_protect;
     uint8_t mode;
     uint8_t enable;
@@ -151,6 +156,9 @@ void Task_Info(void *argument) {
     pit_rate_err = gimbal.pid[GIMBAL_PID_PIT_OMEGA_IDX].last.err;
     pit_out = gimbal.out[GIMBAL_ACTR_PIT_IDX];
     pit_encoder = gimbal.feedback.eulr.encoder.pit;
+    pit_control_target = gimbal.pit_control_target;
+    pit_ladrc_output = gimbal.ladrc[GIMBAL_ACTR_PIT_IDX].output;
+    pit_limit_active = gimbal.pit_limit_active;
     if (gimbal_ladrc_pit_enable != 0U) {
       pit_ctrl_angle_err = gimbal.ladrc[GIMBAL_ACTR_PIT_IDX].v1 -
                            gimbal.ladrc[GIMBAL_ACTR_PIT_IDX].z1;
@@ -176,10 +184,16 @@ void Task_Info(void *argument) {
     const float yaw_angle_error =
         FireWater_Safe(CircleError(yaw_sp, yaw_fb, M_2PI) * M_RAD2DEG_MULT);
     const float yaw_sp_continuous = yaw_fb_continuous + yaw_angle_error;
-    const float pit_fb_degrees = Angle_Degrees360(pit_fb);
+    /* Choose the display turn once. Crossing zero must not move the target
+     * trace by 360 deg along with the feedback. Control remains in rad. */
+    if (pit_fb_ready == 0U && isfinite(pit_fb)) {
+      pit_display_offset = pit_fb < 0.0f ? 360.0f : 0.0f;
+      pit_fb_ready = 1U;
+    }
+    const float pit_fb_degrees = pit_fb * M_RAD2DEG_MULT + pit_display_offset;
     const float pit_angle_error =
         FireWater_Safe(CircleError(pit_sp, pit_fb, M_2PI) * M_RAD2DEG_MULT);
-    const float pit_sp_degrees = pit_fb_degrees + pit_angle_error;
+    const float pit_sp_degrees = pit_sp * M_RAD2DEG_MULT + pit_display_offset;
 
     /* FireWater yaw channels, in order:
      * target/feedback continuous angle (deg), angular speed (deg/s),
@@ -190,10 +204,11 @@ void Task_Info(void *argument) {
      * target/feedback angle (deg), angular speed (deg/s), signed angle error
      * (deg), controller angle error (deg), target/error speed (deg/s), motor
      * output, encoder angle (0..360 deg), LADRC enable and target valid.
+     * Finally: limited Pitch reference (deg), limit active, LADRC output.
      */
     BSP_USB_Printf(
         "yaw:%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%u,"
-        "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u\r\n",
+        "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%.6f,%u,%.6f\r\n",
         FireWater_Safe(yaw_sp_continuous), FireWater_Safe(yaw_fb_continuous),
         FireWater_Safe(yaw_rate * M_RAD2DEG_MULT),
         yaw_angle_error,
@@ -209,7 +224,9 @@ void Task_Info(void *argument) {
         FireWater_Safe(pit_rate_err * M_RAD2DEG_MULT), FireWater_Safe(pit_out),
         Angle_Degrees360(pit_encoder),
         (unsigned int)gimbal_ladrc_pit_enable,
-        (unsigned int)gimbal_pit_target_valid);
+        (unsigned int)gimbal_pit_target_valid,
+        FireWater_Safe(pit_control_target * M_RAD2DEG_MULT + pit_display_offset),
+        (unsigned int)pit_limit_active, FireWater_Safe(pit_ladrc_output));
 
     tick += delay_tick;
     osDelayUntil(tick);

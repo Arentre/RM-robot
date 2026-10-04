@@ -9,6 +9,7 @@ typedef struct {
   float r;          /* tracking differentiator speed factor */
   float b0;         /* estimated plant input gain; sign sets control direction */
   float wc;         /* controller bandwidth, rad/s */
+  float w0;         /* observer bandwidth, rad/s; independent from wc */
   float out_limit;  /* absolute normalized motor command limit */
 } LADRC_Params_t;
 

@@ -91,11 +91,8 @@ void Task_CtrlGimbal(void *argument) {
     if (gimbal.mode == GIMBAL_MODE_ABSOLUTE) {
       if (gimbal_yaw_target_valid != 0U)
         gimbal.setpoint.eulr.yaw = gimbal_yaw_target_rad;
-      if (gimbal_pit_target_valid != 0U)
-        /* Gimbal_Control reverses the command once, then applies the existing
-         * encoder-based Pitch travel limit before changing the setpoint. */
-        gimbal_cmd.delta_eulr.pit = -CircleError(
-            gimbal_pit_target_rad, gimbal.setpoint.eulr.pit, M_2PI);
+      if (enable != 0U && gimbal_pit_target_valid != 0U)
+        gimbal.setpoint.eulr.pit = gimbal_pit_target_rad;
     }
     Gimbal_Control(&gimbal, &gimbal_cmd, tick);
     Gimbal_DumpOutput(&gimbal, &gimbal_out);

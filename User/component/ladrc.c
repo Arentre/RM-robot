@@ -13,20 +13,24 @@ static float LADRC_Limit(float value, float limit) {
 int LADRC_Init(LADRC_t *ctrl, const volatile LADRC_Params_t *param, float T) {
   if (ctrl == NULL || param == NULL) return -1;
 
-  LADRC_Params_t p = {param->r, param->b0, param->wc, param->out_limit};
+  LADRC_Params_t p = {.r = param->r,
+                      .b0 = param->b0,
+                      .wc = param->wc,
+                      .w0 = param->w0,
+                      .out_limit = param->out_limit};
   if (!isfinite(T) || T <= 0.0f || !isfinite(p.r) || p.r <= 0.0f ||
       !isfinite(p.b0) || fabsf(p.b0) < 0.000001f ||
       !isfinite(p.wc) || p.wc <= 0.0f ||
+      !isfinite(p.w0) || p.w0 <= 0.0f ||
       !isfinite(p.out_limit) || p.out_limit <= 0.0f) return -1;
 
   memset(ctrl, 0, sizeof(*ctrl));
   ctrl->param = p;
   ctrl->T = T;
   ctrl->half_T = T * 0.5f;
-  const float w0 = 4.0f * p.wc;
-  ctrl->beta1 = 3.0f * w0;
-  ctrl->beta2 = 3.0f * w0 * w0;
-  ctrl->beta3 = w0 * w0 * w0;
+  ctrl->beta1 = 3.0f * p.w0;
+  ctrl->beta2 = 3.0f * p.w0 * p.w0;
+  ctrl->beta3 = p.w0 * p.w0 * p.w0;
   ctrl->kp = p.wc * p.wc;
   ctrl->kd = 2.0f * p.wc;
   return 0;

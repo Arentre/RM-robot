@@ -14,19 +14,21 @@
 /* Private variables -------------------------------------------------------- */
 volatile uint8_t gimbal_pitch_protect_active = 0U;
 volatile uint8_t gimbal_ladrc_yaw_enable = 1U;
-volatile uint8_t gimbal_ladrc_pit_enable = 1U;
+volatile uint8_t gimbal_ladrc_pit_enable = 0U;
 
 /* 保守的首次上电参数。b0必须结合云台负载实机辨识。 */
 volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
-    .r = 4.0f, .b0 = 100.0f, .wc = 1.0f, .out_limit = 0.03f};
+    .r = 4.0f, .b0 = 500.0f, .wc = 8.0f, .w0 = 32.0f, .out_limit = 1.0f};
 volatile LADRC_Params_t gimbal_ladrc_pit_param = {
-    .r = 4.0f, .b0 = 100.0f, .wc = 1.0f, .out_limit = 0.03f};
+    .r = 2.5f, .b0 = 120.0f, .wc = 1.5f, .w0 = 3.0f,
+    .out_limit = 0.03f};
 /* Private function  -------------------------------------------------------- */
 
 static uint8_t Gimbal_LADRCParamChanged(
     const LADRC_t *ctrl, const volatile LADRC_Params_t *param) {
   return ctrl->param.r != param->r || ctrl->param.b0 != param->b0 ||
          ctrl->param.wc != param->wc ||
+         ctrl->param.w0 != param->w0 ||
          ctrl->param.out_limit != param->out_limit;
 }
 
@@ -185,18 +187,17 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
   CircleAdd(&(g->setpoint.eulr.yaw), g_cmd->delta_eulr.yaw, M_2PI);
 
   /* 处理pitch控制命令，软件限位 */
-  const float delta_max =
-      CircleError(g->limit.max,
-                  (g->feedback.eulr.encoder.pit + g->setpoint.eulr.pit -
-                   g->feedback.eulr.imu.pit),
-                  M_2PI);
-  const float delta_min =
-      CircleError(g->limit.min,
-                  (g->feedback.eulr.encoder.pit + g->setpoint.eulr.pit -
-                   g->feedback.eulr.imu.pit),
-                  M_2PI);
-  Clip(&(g_cmd->delta_eulr.pit), delta_min, delta_max);
-  g->setpoint.eulr.pit += g_cmd->delta_eulr.pit;
+  /* Keep the commanded Pitch independent from IMU feedback.  The stored
+   * encoder end stop is not used in this learning build because an invalid
+   * calibration generated a false -70 deg reference. */
+  const float requested_pitch =
+      g->setpoint.eulr.pit + g_cmd->delta_eulr.pit;
+  g->pit_control_target = requested_pitch;
+  Clip(&g->pit_control_target, -GIMBAL_PITCH_SAFE_LIMIT_RAD,
+       GIMBAL_PITCH_SAFE_LIMIT_RAD);
+  g->pit_limit_active =
+      fabsf(g->pit_control_target - requested_pitch) > 0.00001f;
+  g->setpoint.eulr.pit = g->pit_control_target;
 
   /* 重置输入指令，防止重复处理 */
   AHRS_ResetEulr(&(g_cmd->delta_eulr));
@@ -216,7 +217,10 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
         gimbal_pitch_protect_active = 1U;
         for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->out[i] = 0.0f;
         for (uint8_t i = 0; i < GIMBAL_PID_NUM; i++) PID_Reset(g->pid + i);
-        for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) g->ladrc_active[i] = 0U;
+        for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) {
+          g->ladrc_active[i] = 0U;
+          g->ladrc[i].output = 0.0f;
+        }
         break;
       }
       gimbal_pitch_protect_active = 0U;
@@ -258,7 +262,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
               &(g->filter_out[GIMBAL_ACTR_PIT_IDX]), 0.0f);
         g->out[GIMBAL_ACTR_PIT_IDX] = Gimbal_LADRCControl(
             &(g->ladrc[GIMBAL_ACTR_PIT_IDX]), &gimbal_ladrc_pit_param,
-            &(g->ladrc_active[GIMBAL_ACTR_PIT_IDX]), g->setpoint.eulr.pit,
+            &(g->ladrc_active[GIMBAL_ACTR_PIT_IDX]), g->pit_control_target,
             g->feedback.eulr.imu.pit, g->feedback.gyro.y,
             g->ladrc[GIMBAL_ACTR_PIT_IDX].T);
       } else {
