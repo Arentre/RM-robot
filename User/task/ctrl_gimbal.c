@@ -8,6 +8,8 @@
 */
 
 /* Includes ----------------------------------------------------------------- */
+#include <math.h>
+
 #include "module\gimbal.h"
 #include "task\user_task.h"
 
@@ -31,6 +33,11 @@ static Referee_GimbalUI_t gimbal_ui;
 
 /* Keil Watch中设为1才开启云台，上电默认无电流输出。 */
 volatile uint8_t gimbal_test_enable = 0U;
+volatile uint8_t gimbal_serial_control_active = 0U;
+volatile uint32_t gimbal_serial_last_command_tick = 0U;
+volatile float gimbal_yaw_test_origin_rad = 0.0f;
+volatile float gimbal_pit_test_origin_rad = 0.0f;
+volatile uint8_t gimbal_test_stop_reason = GIMBAL_TEST_STOP_NONE;
 extern volatile float gimbal_yaw_target_rad;
 extern volatile uint8_t gimbal_yaw_target_valid;
 extern volatile float gimbal_pit_target_rad;
@@ -64,6 +71,7 @@ void Task_CtrlGimbal(void *argument) {
   osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
                     NULL, osWaitForever);
   uint32_t tick = osKernelGetTickCount(); /* 控制任务运行频率的计时 */
+  const uint32_t serial_timeout_tick = osKernelGetTickFreq(); /* 1 second */
   while (1) {
 #ifdef DEBUG
     /* 记录任务所使用的的栈空间 */
@@ -79,7 +87,16 @@ void Task_CtrlGimbal(void *argument) {
                       NULL, 0);
     /* 任务只提交模式请求。进入 ABS 的瞬间由 Gimbal_SetMode()
      * 锁存当前 yaw/pitch，避免任务层和模块层重复改写目标角。 */
-    const uint8_t enable = (gimbal_test_enable != 0U) ? 1U : 0U;
+    if (gimbal_serial_control_active != 0U &&
+        (uint32_t)(tick - gimbal_serial_last_command_tick) >
+            serial_timeout_tick) {
+      gimbal_test_enable = 0U;
+      gimbal_serial_control_active = 0U;
+      gimbal_yaw_target_valid = 0U;
+      gimbal_pit_target_valid = 0U;
+      gimbal_test_stop_reason = GIMBAL_TEST_STOP_TIMEOUT;
+    }
+    uint8_t enable = (gimbal_test_enable != 0U) ? 1U : 0U;
     if (enable != 0U) {
       gimbal_cmd.mode = GIMBAL_MODE_ABSOLUTE;
     } else {
@@ -88,6 +105,39 @@ void Task_CtrlGimbal(void *argument) {
 
     osKernelLock(); /* 锁住RTOS内核防止控制过程中断，造成错误 */
     Gimbal_UpdateFeedback(&gimbal, &can);
+
+    if (enable != 0U && gimbal_serial_control_active != 0U) {
+      const float yaw_travel = CircleError(gimbal.feedback.eulr.imu.yaw,
+                                           gimbal_yaw_test_origin_rad, M_2PI);
+      const float pit_travel = gimbal.feedback.eulr.imu.pit -
+                               gimbal_pit_test_origin_rad;
+      uint8_t stop_reason = GIMBAL_TEST_STOP_NONE;
+      if (!isfinite(gimbal.feedback.eulr.imu.yaw) ||
+          !isfinite(gimbal.feedback.eulr.imu.pit) ||
+          !isfinite(gimbal.feedback.gyro.y) ||
+          !isfinite(gimbal.feedback.gyro.z))
+        stop_reason = GIMBAL_TEST_STOP_INVALID_FEEDBACK;
+      else if (fabsf(yaw_travel) > GIMBAL_TEST_YAW_HARD_MAX_RAD)
+        stop_reason = GIMBAL_TEST_STOP_YAW_TRAVEL;
+      else if (fabsf(pit_travel) > GIMBAL_TEST_PIT_HARD_MAX_RAD)
+        stop_reason = GIMBAL_TEST_STOP_PITCH_TRAVEL;
+      else if (fabsf(gimbal.feedback.gyro.z) > GIMBAL_TEST_RATE_MAX_RAD_S ||
+               (gimbal_ladrc_pit_enable != 0U &&
+                fabsf(gimbal.feedback.gyro.y) > GIMBAL_TEST_RATE_MAX_RAD_S))
+        stop_reason = GIMBAL_TEST_STOP_RATE;
+      else if (fabsf(gimbal.feedback.eulr.imu.pit) > 1.22173048f)
+        stop_reason = GIMBAL_TEST_STOP_PITCH_PROTECT;
+
+      if (stop_reason != GIMBAL_TEST_STOP_NONE) {
+        gimbal_test_enable = 0U;
+        gimbal_serial_control_active = 0U;
+        gimbal_yaw_target_valid = 0U;
+        gimbal_pit_target_valid = 0U;
+        gimbal_test_stop_reason = stop_reason;
+        enable = 0U;
+        gimbal_cmd.mode = GIMBAL_MODE_RELAX;
+      }
+    }
     if (gimbal.mode == GIMBAL_MODE_ABSOLUTE) {
       if (gimbal_yaw_target_valid != 0U)
         gimbal.setpoint.eulr.yaw = gimbal_yaw_target_rad;
@@ -95,6 +145,15 @@ void Task_CtrlGimbal(void *argument) {
         gimbal.setpoint.eulr.pit = gimbal_pit_target_rad;
     }
     Gimbal_Control(&gimbal, &gimbal_cmd, tick);
+    if (enable != 0U && gimbal_serial_control_active != 0U) {
+      Clip(&gimbal.out[GIMBAL_ACTR_YAW_IDX], -GIMBAL_TEST_OUTPUT_MAX,
+           GIMBAL_TEST_OUTPUT_MAX);
+      if (gimbal_ladrc_pit_enable != 0U)
+        Clip(&gimbal.out[GIMBAL_ACTR_PIT_IDX], -GIMBAL_TEST_PIT_OUTPUT_MAX,
+             GIMBAL_TEST_PIT_OUTPUT_MAX);
+      else
+        gimbal.out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
+    }
     Gimbal_DumpOutput(&gimbal, &gimbal_out);
 
     osKernelUnlock();

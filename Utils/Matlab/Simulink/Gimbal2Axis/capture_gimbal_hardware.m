@@ -1,5 +1,5 @@
 function data = capture_gimbal_hardware(port, duration_s)
-% Record the existing 50 Hz USB CDC FireWater telemetry from the STM32.
+% Record the USB CDC FireWater telemetry from the STM32.
 % port may be a serialport object or a COM port name such as "COM7".
 if nargin < 2, duration_s = 10; end
 validateattributes(duration_s, {'numeric'}, {'scalar','finite','positive'});
@@ -23,7 +23,9 @@ names = {'HostTime_s','YawTarget_deg','YawFeedback_deg', ...
     'PitchError_deg','PitchControllerError_deg','PitchRateTarget_deg_s', ...
     'PitchRateError_deg_s','PitchOutput','PitchEncoder_deg', ...
     'PitchLadrcEnable','PitchTargetValid','PitchLimitedTarget_deg', ...
-    'PitchLimitActive','PitchLadrcOutput'};
+    'PitchLimitActive','PitchLadrcOutput','McuTime_s', ...
+    'YawActualCurrent_A','PitchActualCurrent_A','YawTemp_C','PitchTemp_C', ...
+    'StopReason','YawOrigin_deg','YawTravel_deg','YawFrictionFF'};
 samples = zeros(max(1, ceil(duration_s*55)), numel(names));
 n = 0;
 t0 = tic;
@@ -41,7 +43,13 @@ while toc(t0) < duration_s
     end
     if ~startsWith(line, 'yaw:'), continue; end
     values = str2double(split(extractAfter(line, 4), ','));
-    if numel(values) ~= 26 || any(~isfinite(values)), continue; end
+    if ~(numel(values) == 26 || numel(values) == 34 || numel(values) == 35) || ...
+            any(~isfinite(values)), continue; end
+    if numel(values) == 26
+        values(27:35,1) = NaN; % compatibility with firmware before bench protocol
+    elseif numel(values) == 34
+        values(35,1) = NaN; % compatibility with firmware before friction FF
+    end
     n = n + 1;
     if n > size(samples, 1), samples(end+100, :) = 0; end %#ok<AGROW>
     samples(n, :) = [toc(t0), values(:).'];
@@ -56,29 +64,43 @@ csvPath = fullfile(here, ['gimbal_hardware_' stamp '.csv']);
 pngPath = fullfile(here, ['gimbal_hardware_' stamp '.png']);
 writetable(data, csvPath);
 
+time = data.HostTime_s;
+timeLabel = 'Host time (s)';
+if all(isfinite(data.McuTime_s)) && range(data.McuTime_s) > 0
+    time = data.McuTime_s - data.McuTime_s(1);
+    timeLabel = 'MCU time (s)';
+end
 f = figure('Color','w','Name','GM6020 hardware telemetry', ...
-    'Position',[80 80 1250 850]);
-tiledlayout(3,2,'TileSpacing','compact');
-nexttile; plot(data.HostTime_s, data.YawTarget_deg, 'k--', ...
-    data.HostTime_s, data.YawFeedback_deg, 'b');
+    'Position',[80 40 1250 1050]);
+tiledlayout(4,2,'TileSpacing','compact');
+nexttile; plot(time, data.YawTarget_deg, 'k--', ...
+    time, data.YawFeedback_deg, 'b');
 grid on; title('Yaw angle'); ylabel('deg'); legend('Target','Feedback');
-nexttile; plot(data.HostTime_s, data.PitchTarget_deg, 'k--', ...
-    data.HostTime_s, data.PitchFeedback_deg, 'r');
+nexttile; plot(time, data.PitchTarget_deg, 'k--', ...
+    time, data.PitchFeedback_deg, 'r');
 grid on; title('Pitch angle'); ylabel('deg'); legend('Target','Feedback');
-nexttile; plot(data.HostTime_s, data.YawError_deg, 'b');
+nexttile; plot(time, data.YawError_deg, 'b');
 grid on; title('Yaw error'); ylabel('deg');
-nexttile; plot(data.HostTime_s, data.PitchError_deg, 'r');
+nexttile; plot(time, data.PitchError_deg, 'r');
 grid on; title('Pitch error'); ylabel('deg');
 nexttile;
-yyaxis left; plot(data.HostTime_s, data.YawRate_deg_s, 'b'); ylabel('deg/s');
-yyaxis right; plot(data.HostTime_s, data.YawOutput, 'k:'); ylabel('Output');
-grid on; title('Yaw rate / output'); xlabel('Host time (s)');
+yyaxis left; plot(time, data.YawRate_deg_s, 'b'); ylabel('deg/s');
+yyaxis right; plot(time, data.YawOutput, 'k:'); ylabel('Output');
+grid on; title('Yaw rate / output'); xlabel(timeLabel);
 legend('Rate (deg/s)','Output (normalized)');
 nexttile;
-yyaxis left; plot(data.HostTime_s, data.PitchRate_deg_s, 'r'); ylabel('deg/s');
-yyaxis right; plot(data.HostTime_s, data.PitchOutput, 'k:'); ylabel('Output');
-grid on; title('Pitch rate / output'); xlabel('Host time (s)');
+yyaxis left; plot(time, data.PitchRate_deg_s, 'r'); ylabel('deg/s');
+yyaxis right; plot(time, data.PitchOutput, 'k:'); ylabel('Output');
+grid on; title('Pitch rate / output'); xlabel(timeLabel);
 legend('Rate (deg/s)','Output (normalized)');
+nexttile; plot(time, data.YawActualCurrent_A, 'b', ...
+    time, 3*data.YawOutput, 'k:',time,3*data.YawFrictionFF,'m--');
+grid on; title('Yaw current'); xlabel(timeLabel); ylabel('A');
+legend('Actual torque current','Command equivalent','Friction FF equivalent', ...
+    'Location','best');
+nexttile; yyaxis left; plot(time, data.YawTravel_deg, 'b'); ylabel('deg');
+yyaxis right; plot(time, data.YawTemp_C, 'r'); ylabel('deg C');
+grid on; title('Yaw travel / temperature'); xlabel(timeLabel);
 exportgraphics(f, pngPath, 'Resolution', 160);
 fprintf('Recorded %d valid frames at %.1f Hz (host timestamps).\n', ...
     n, n / data.HostTime_s(end));

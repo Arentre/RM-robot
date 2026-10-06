@@ -24,6 +24,18 @@ extern "C" {
 #define GIMBAL_ERR_NULL (-2) /* 运行时发现NULL指针 */
 #define GIMBAL_ERR_MODE (-3) /* 运行时配置了错误的CMD_GimbalMode_t */
 
+/* USB-controlled bench test limits.  The values are deliberately smaller
+ * than the GM6020 electrical limits and keep Yaw close to its enable pose. */
+#define GIMBAL_TEST_YAW_STEP_MAX_RAD (0.52359878f)   /* 30 deg */
+#define GIMBAL_TEST_YAW_TARGET_MAX_RAD (0.61086524f) /* 35 deg */
+#define GIMBAL_TEST_YAW_HARD_MAX_RAD (0.69813170f)   /* 40 deg */
+#define GIMBAL_TEST_PIT_STEP_MAX_RAD (0.03490659f)   /* 2 deg */
+#define GIMBAL_TEST_PIT_TARGET_MAX_RAD (0.08726646f) /* 5 deg */
+#define GIMBAL_TEST_PIT_HARD_MAX_RAD (0.12217305f)   /* 7 deg */
+#define GIMBAL_TEST_RATE_MAX_RAD_S (3.5f)            /* about 200 deg/s */
+#define GIMBAL_TEST_OUTPUT_MAX (0.15f)               /* about 0.45 A */
+#define GIMBAL_TEST_PIT_OUTPUT_MAX (0.10f)           /* about 0.30 A */
+
 /* Exported macro ----------------------------------------------------------- */
 /* Exported types ----------------------------------------------------------- */
 
@@ -42,6 +54,17 @@ enum Gimbal_Acuator_e {
   GIMBAL_ACTR_PIT_IDX,     /* Pitch轴控制相关的索引值 */
   GIMBAL_ACTR_NUM,         /* 总共的动作器数量 */
 };
+
+typedef enum {
+  GIMBAL_TEST_STOP_NONE = 0,
+  GIMBAL_TEST_STOP_COMMAND = 1,
+  GIMBAL_TEST_STOP_TIMEOUT = 2,
+  GIMBAL_TEST_STOP_YAW_TRAVEL = 3,
+  GIMBAL_TEST_STOP_RATE = 4,
+  GIMBAL_TEST_STOP_INVALID_FEEDBACK = 5,
+  GIMBAL_TEST_STOP_PITCH_PROTECT = 6,
+  GIMBAL_TEST_STOP_PITCH_TRAVEL = 7,
+} Gimbal_TestStopReason_e;
 
 /* 云台参数的结构体，包含所有初始化用的参数，通常是const，存好几组。*/
 typedef struct {
@@ -72,6 +95,13 @@ typedef struct {
 /* 云台反馈数据的结构体，包含反馈控制用的反馈数据 */
 typedef struct {
   AHRS_Gyro_t gyro; /* IMU的陀螺仪数据 */
+
+  struct {
+    float yaw_current; /* GM6020 actual torque current, A */
+    float pit_current;
+    float yaw_temp; /* degree C */
+    float pit_temp;
+  } motor;
 
   /* 欧拉角 */
   struct {
@@ -120,6 +150,14 @@ extern volatile uint8_t gimbal_ladrc_yaw_enable;
 extern volatile uint8_t gimbal_ladrc_pit_enable;
 extern volatile LADRC_Params_t gimbal_ladrc_yaw_param;
 extern volatile LADRC_Params_t gimbal_ladrc_pit_param;
+/* Yaw friction feedforward uses normalized GM6020 command units. */
+extern volatile uint8_t gimbal_yaw_friction_enable;
+extern volatile float gimbal_yaw_friction_static;
+extern volatile float gimbal_yaw_friction_coulomb;
+extern volatile float gimbal_yaw_friction_deadband_rad;
+extern volatile float gimbal_yaw_friction_transition_rad_s;
+extern volatile float gimbal_yaw_friction_slew_per_s;
+extern volatile float gimbal_yaw_friction_output;
 
 /* Exported functions prototypes -------------------------------------------- */
 

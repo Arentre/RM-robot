@@ -50,7 +50,8 @@ extern "C" {
   ((CAN_MOTOR_RX_BUF_SIZE > CAN_CAP_RX_BUF_SIZE) ? CAN_MOTOR_RX_BUF_SIZE \
                                                  : CAN_CAP_RX_BUF_SIZE)
 
-/* 电机最大电流绝对值 */
+/* 电机最大电流绝对值。GM6020 手册明确给出指令比例；反馈字段按同一
+ * +/-3 A 比例换算，正式辨识前仍需用可信电流测量核对反馈比例。 */
 #define CAN_GM6020_MAX_ABS_CUR (3)
 #define CAN_M3508_MAX_ABS_CUR (20)
 #define CAN_M2006_MAX_ABS_CUR (10)

@@ -68,14 +68,14 @@ static bool inited = false;
 
 /* Private function  -------------------------------------------------------- */
 static void CAN_Motor_Decode(CAN_MotorFeedback_t *feedback,
-                             const uint8_t *raw) {
+                             const uint8_t *raw, float max_abs_current) {
   uint16_t raw_angle = (uint16_t)((raw[0] << 8) | raw[1]);
   int16_t raw_current = (int16_t)((raw[4] << 8) | raw[5]);
 
   feedback->rotor_angle = raw_angle / (float)CAN_MOTOR_ENC_RES * M_2PI;
   feedback->rotor_speed = (int16_t)((raw[2] << 8) | raw[3]);
   feedback->torque_current =
-      raw_current * CAN_M3508_MAX_ABS_CUR / (float)CAN_MOTOR_CUR_RES;
+      raw_current * max_abs_current / (float)CAN_MOTOR_CUR_RES;
   feedback->temp = raw[6];
 }
 
@@ -258,7 +258,8 @@ int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
     case CAN_M3508_M3_ID:
     case CAN_M3508_M4_ID:
       index = can_rx->rx_header.StdId - CAN_M3508_M1_ID;
-      CAN_Motor_Decode(&(can->motor.chassis.as_array[index]), can_rx->rx_data);
+      CAN_Motor_Decode(&(can->motor.chassis.as_array[index]), can_rx->rx_data,
+                       CAN_M3508_MAX_ABS_CUR);
       can->recive_flag |= 1 << index;
       break;
 
@@ -267,14 +268,18 @@ int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
     case CAN_M2006_TRIG_ID:
       index = can_rx->rx_header.StdId - CAN_M3508_FRIC1_ID;
       can->recive_flag |= 1 << (index + 6);
-      CAN_Motor_Decode(&(can->motor.shoot.as_array[index]), can_rx->rx_data);
+      CAN_Motor_Decode(
+          &(can->motor.shoot.as_array[index]), can_rx->rx_data,
+          can_rx->rx_header.StdId == CAN_M2006_TRIG_ID ? CAN_M2006_MAX_ABS_CUR
+                                                       : CAN_M3508_MAX_ABS_CUR);
       break;
 
     case CAN_GM6020_YAW_ID:
     case CAN_GM6020_PIT_ID:
       index = can_rx->rx_header.StdId - CAN_GM6020_YAW_ID;
       can->recive_flag |= 1 << (index + 4);
-      CAN_Motor_Decode(&(can->motor.gimbal.as_array[index]), can_rx->rx_data);
+      CAN_Motor_Decode(&(can->motor.gimbal.as_array[index]), can_rx->rx_data,
+                       CAN_GM6020_MAX_ABS_CUR);
       break;
     case CAN_CAP_FB_ID_BASE:
       can->recive_flag |= 1 << 9;
