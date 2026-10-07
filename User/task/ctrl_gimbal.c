@@ -38,6 +38,9 @@ volatile uint32_t gimbal_serial_last_command_tick = 0U;
 volatile float gimbal_yaw_test_origin_rad = 0.0f;
 volatile float gimbal_pit_test_origin_rad = 0.0f;
 volatile uint8_t gimbal_test_stop_reason = GIMBAL_TEST_STOP_NONE;
+volatile uint8_t gimbal_yaw_chirp_active = 0U;
+volatile uint8_t gimbal_yaw_chirp_down = 0U;
+volatile uint32_t gimbal_yaw_chirp_start_tick = 0U;
 extern volatile float gimbal_yaw_target_rad;
 extern volatile uint8_t gimbal_yaw_target_valid;
 extern volatile float gimbal_pit_target_rad;
@@ -87,11 +90,34 @@ void Task_CtrlGimbal(void *argument) {
                       NULL, 0);
     /* 任务只提交模式请求。进入 ABS 的瞬间由 Gimbal_SetMode()
      * 锁存当前 yaw/pitch，避免任务层和模块层重复改写目标角。 */
+    /* The internal chirp is generated at the 500 Hz control rate.  It also
+     * services the serial watchdog, so USB only has to carry telemetry. */
+    if (gimbal_yaw_chirp_active != 0U) {
+      const float elapsed =
+          (float)(tick - gimbal_yaw_chirp_start_tick) /
+          (float)osKernelGetTickFreq();
+      if (elapsed >= 20.0f) {
+        gimbal_yaw_chirp_active = 0U;
+        gimbal_yaw_target_rad = gimbal_yaw_test_origin_rad;
+      } else {
+        const float f0 = gimbal_yaw_chirp_down != 0U ? 2.0f : 0.2f;
+        const float f1 = gimbal_yaw_chirp_down != 0U ? 0.2f : 2.0f;
+        const float k = (f1 - f0) / 20.0f;
+        const float phase = M_2PI * (f0 * elapsed + 0.5f * k * elapsed * elapsed);
+        float target = gimbal_yaw_test_origin_rad;
+        CircleAdd(&target, 0.08726646f * sinf(phase), M_2PI); /* 5 deg */
+        gimbal_yaw_target_rad = target;
+      }
+      gimbal_yaw_target_valid = 1U;
+      gimbal_serial_last_command_tick = tick;
+    }
+
     if (gimbal_serial_control_active != 0U &&
         (uint32_t)(tick - gimbal_serial_last_command_tick) >
             serial_timeout_tick) {
       gimbal_test_enable = 0U;
       gimbal_serial_control_active = 0U;
+      gimbal_yaw_chirp_active = 0U;
       gimbal_yaw_target_valid = 0U;
       gimbal_pit_target_valid = 0U;
       gimbal_test_stop_reason = GIMBAL_TEST_STOP_TIMEOUT;
@@ -131,6 +157,7 @@ void Task_CtrlGimbal(void *argument) {
       if (stop_reason != GIMBAL_TEST_STOP_NONE) {
         gimbal_test_enable = 0U;
         gimbal_serial_control_active = 0U;
+        gimbal_yaw_chirp_active = 0U;
         gimbal_yaw_target_valid = 0U;
         gimbal_pit_target_valid = 0U;
         gimbal_test_stop_reason = stop_reason;

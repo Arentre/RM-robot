@@ -57,6 +57,9 @@ YPARAM=r,b0,wc,w0,out_limit    写入运行期Yaw LADRC参数
 PPARAM=r,b0,wc,w0,out_limit    写入运行期Pitch LADRC参数，输出上限最大0.10
 YFF=0 / YFF=1                  关闭/启用Yaw摩擦前馈
 YFFPARAM=静摩擦,库仑摩擦,死区角度,速度过渡点,输出斜率
+YCHIRP=UP / YCHIRP=DOWN        STM32内部生成±5°、0.2～2 Hz扫频
+YDITHER=0 / YDITHER=1          关闭/启用小角度防粘滞微扰
+YDITHERPARAM=幅值,频率Hz        默认0.008、25 Hz
 GET                            返回状态和Yaw/Pitch参数
 ```
 
@@ -69,7 +72,9 @@ validationRun = run_gimbal_bench_test(s,30.0);
 summary = tune_gimbal_yaw(s,id.B0_rad_s2_per_command,[2 4 6 8]);
 ```
 
-辨识优先调用 System Identification Toolbox 的 `iddata + tfest + compare`，拟合一阶角速度/电流模型 `Kt/(J*s+B)`；积分力矩回归作为独立交叉核对和工具箱不可用时的后备。自动调参每组做 30° 往返，依次比较 `wc=2/4/6/8`，保持 `w0=4*wc`，输出上限为 0.10。它是针对 LADRC 的受限硬件网格优化，不把非线性 LADRC 强行当作 PID 交给 PID Tuner。任何行程、角速度、电流、温度、遥测超时或固件保护异常都会发送 `STOP`。
+宽频辨识使用 STM32 控制任务内部生成的两组独立扫频：一组 `0.2→2 Hz`，一组 `2→0.2 Hz`，幅值均为 ±5°。MATLAB 使用 System Identification Toolbox 的 `iddata + tfest + compare` 比较开环物理模型和闭环经验模型。实测闭环三阶模型的双向独立验证约为 `70.7%/66.3%`。电流到角速度模型两次得到的 `b0≈182.5` 差异仅约 `0.054%`，但因摩擦非线性和闭环残差相关，不能直接写入 LADRC；实机试写后触发角速度保护，因此保留 `b0=500`。
+
+最终 Yaw LADRC 参数为 `r=10、b0=500、wc=12、w0=48、out_limit=0.10`。两次30°独立复测的上升时间为 `0.260～0.276 s`，超调 `0.36～0.76%`，峰值速度约 `140°/s`，峰值反馈电流低于 `0.18 A`，均未触发保护。与原始约 `0.628 s` 相比，上升时间缩短约56%。任何行程、角速度、电流、温度、遥测超时或固件保护异常仍会发送 `STOP`。
 
 实测显示 Yaw 正反向启动力约为 0.04 归一化输出，运动摩擦约为 0.03。固件中的摩擦前馈经 2°和 30°独立验证后默认启用，参数为：静摩擦 0.035、库仑摩擦 0.020、误差死区 0.2°、速度过渡点 5°/s、输出斜率 0.12/s。换向时前馈按斜率平滑穿过零，进入误差死区则立即撤掉；可用 `YFF=0` 临时关闭做 A/B 对比。重新烧录后运行：
 

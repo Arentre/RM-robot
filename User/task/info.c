@@ -21,6 +21,9 @@ extern volatile uint32_t gimbal_serial_last_command_tick;
 extern volatile float gimbal_yaw_test_origin_rad;
 extern volatile float gimbal_pit_test_origin_rad;
 extern volatile uint8_t gimbal_test_stop_reason;
+extern volatile uint8_t gimbal_yaw_chirp_active;
+extern volatile uint8_t gimbal_yaw_chirp_down;
+extern volatile uint32_t gimbal_yaw_chirp_start_tick;
 extern volatile uint8_t gimbal_yaw_friction_enable;
 extern volatile float gimbal_yaw_friction_static;
 extern volatile float gimbal_yaw_friction_coulomb;
@@ -28,6 +31,9 @@ extern volatile float gimbal_yaw_friction_deadband_rad;
 extern volatile float gimbal_yaw_friction_transition_rad_s;
 extern volatile float gimbal_yaw_friction_slew_per_s;
 extern volatile float gimbal_yaw_friction_output;
+extern volatile uint8_t gimbal_yaw_dither_enable;
+extern volatile float gimbal_yaw_dither_amplitude;
+extern volatile float gimbal_yaw_dither_frequency_hz;
 volatile float gimbal_yaw_target_rad = 0.0f;
 volatile uint8_t gimbal_yaw_target_valid = 0U;
 volatile float gimbal_pit_target_rad = 0.0f;
@@ -52,6 +58,7 @@ static void Gimbal_SerialStop(uint8_t reason) {
   gimbal_yaw_target_valid = 0U;
   gimbal_pit_target_valid = 0U;
   gimbal_ladrc_pit_enable = 0U;
+  gimbal_yaw_chirp_active = 0U;
   gimbal_test_stop_reason = reason;
   osKernelUnlock();
 }
@@ -122,6 +129,7 @@ static void Gimbal_ParseCommand(char *cmd) {
     gimbal_ladrc_yaw_enable = 1U;
     gimbal_ladrc_pit_enable = 0U;
     gimbal_test_stop_reason = GIMBAL_TEST_STOP_NONE;
+    gimbal_yaw_chirp_active = 0U;
     gimbal_serial_control_active = 1U;
     Gimbal_SerialTouch();
     gimbal_test_enable = 1U;
@@ -137,6 +145,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     osKernelLock();
+    gimbal_yaw_chirp_active = 0U;
     gimbal_yaw_target_rad = gimbal.feedback.eulr.imu.yaw;
     gimbal_pit_target_rad = gimbal.feedback.eulr.imu.pit;
     gimbal_yaw_target_valid = 1U;
@@ -153,6 +162,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     osKernelLock();
+    gimbal_yaw_chirp_active = 0U;
     gimbal_yaw_target_rad = gimbal_yaw_test_origin_rad;
     gimbal_pit_target_rad = gimbal_pit_test_origin_rad;
     gimbal_yaw_target_valid = 1U;
@@ -160,6 +170,23 @@ static void Gimbal_ParseCommand(char *cmd) {
     Gimbal_SerialTouch();
     osKernelUnlock();
     BSP_USB_Printf("ack:CENTER\r\n");
+    return;
+  }
+
+  if (strcmp(cmd, "YCHIRP=UP") == 0 ||
+      strcmp(cmd, "YCHIRP=DOWN") == 0) {
+    if (gimbal_serial_control_active == 0U || gimbal_test_enable == 0U) {
+      BSP_USB_Printf("err:YCHIRP,state\r\n");
+      return;
+    }
+    osKernelLock();
+    gimbal_yaw_chirp_down = strcmp(cmd, "YCHIRP=DOWN") == 0 ? 1U : 0U;
+    gimbal_yaw_chirp_start_tick = osKernelGetTickCount();
+    gimbal_yaw_chirp_active = 1U;
+    Gimbal_SerialTouch();
+    osKernelUnlock();
+    BSP_USB_Printf("ack:YCHIRP=%s\r\n",
+                   gimbal_yaw_chirp_down != 0U ? "DOWN" : "UP");
     return;
   }
 
@@ -289,6 +316,39 @@ static void Gimbal_ParseCommand(char *cmd) {
     return;
   }
 
+  if (strcmp(cmd, "YDITHER=0") == 0 || strcmp(cmd, "YDITHER=1") == 0) {
+    gimbal_yaw_dither_enable = cmd[8] == '1' ? 1U : 0U;
+    Gimbal_SerialTouch();
+    BSP_USB_Printf("ack:YDITHER=%u\r\n",
+                   (unsigned int)gimbal_yaw_dither_enable);
+    return;
+  }
+
+  if (strncmp(cmd, "YDITHERPARAM=", 13) == 0) {
+    const char *cursor = cmd + 13;
+    char *end;
+    float amplitude = strtof(cursor, &end);
+    if (end == cursor || *end != ',' || !isfinite(amplitude)) {
+      BSP_USB_Printf("err:YDITHERPARAM,format\r\n");
+      return;
+    }
+    cursor = end + 1;
+    float frequency = strtof(cursor, &end);
+    if (end == cursor || *end != '\0' || !isfinite(frequency) ||
+        amplitude < 0.0f || amplitude > 0.020f || frequency < 5.0f ||
+        frequency > 50.0f) {
+      BSP_USB_Printf("err:YDITHERPARAM,range\r\n");
+      return;
+    }
+    osKernelLock();
+    gimbal_yaw_dither_amplitude = amplitude;
+    gimbal_yaw_dither_frequency_hz = frequency;
+    Gimbal_SerialTouch();
+    osKernelUnlock();
+    BSP_USB_Printf("ack:YDITHERPARAM\r\n");
+    return;
+  }
+
   float degree;
   if (strncmp(cmd, "YAWREL=", 7) == 0) {
     if (gimbal_serial_control_active == 0U ||
@@ -305,6 +365,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     osKernelLock();
+    gimbal_yaw_chirp_active = 0U;
     gimbal_yaw_target_rad = target;
     gimbal_yaw_target_valid = 1U;
     Gimbal_SerialTouch();
@@ -354,6 +415,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     osKernelLock();
+    gimbal_yaw_chirp_active = 0U;
     gimbal_yaw_target_rad = target;
     gimbal_yaw_target_valid = 1U;
     Gimbal_SerialTouch();

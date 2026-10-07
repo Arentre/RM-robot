@@ -158,6 +158,10 @@ extern volatile float gimbal_yaw_friction_deadband_rad;
 extern volatile float gimbal_yaw_friction_transition_rad_s;
 extern volatile float gimbal_yaw_friction_slew_per_s;
 extern volatile float gimbal_yaw_friction_output;
+extern volatile uint8_t gimbal_yaw_dither_enable;
+extern volatile float gimbal_yaw_dither_amplitude;
+extern volatile float gimbal_yaw_dither_frequency_hz;
+extern volatile float gimbal_yaw_dither_output;
 
 /* Exported functions prototypes -------------------------------------------- */
 

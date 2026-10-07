@@ -16,9 +16,10 @@ volatile uint8_t gimbal_pitch_protect_active = 0U;
 volatile uint8_t gimbal_ladrc_yaw_enable = 1U;
 volatile uint8_t gimbal_ladrc_pit_enable = 0U;
 
-/* 保守的首次上电参数。b0必须结合云台负载实机辨识。 */
+/* 2026-10-07 实机扫频和两次 30 deg 往返验证后的 Yaw 参数。 */
 volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
-    .r = 4.0f, .b0 = 500.0f, .wc = 8.0f, .w0 = 32.0f, .out_limit = 1.0f};
+    .r = 10.0f, .b0 = 500.0f, .wc = 12.0f, .w0 = 48.0f,
+    .out_limit = 0.10f};
 volatile LADRC_Params_t gimbal_ladrc_pit_param = {
     .r = 2.5f, .b0 = 120.0f, .wc = 1.5f, .w0 = 3.0f,
     .out_limit = 0.03f};
@@ -32,6 +33,11 @@ volatile float gimbal_yaw_friction_transition_rad_s =
     0.08726646f; /* 5 deg/s */
 volatile float gimbal_yaw_friction_slew_per_s = 0.12f;
 volatile float gimbal_yaw_friction_output = 0.0f;
+volatile uint8_t gimbal_yaw_dither_enable = 1U;
+volatile float gimbal_yaw_dither_amplitude = 0.008f;
+volatile float gimbal_yaw_dither_frequency_hz = 25.0f;
+volatile float gimbal_yaw_dither_output = 0.0f;
+static float gimbal_yaw_dither_phase = 0.0f;
 /* Private function  -------------------------------------------------------- */
 
 static float Gimbal_YawFrictionFeedforward(const Gimbal_t *g) {
@@ -330,6 +336,25 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
     gimbal_yaw_friction_output += delta;
   }
   g->out[GIMBAL_ACTR_YAW_IDX] += gimbal_yaw_friction_output;
+
+  const float yaw_error =
+      CircleError(g->setpoint.eulr.yaw, g->feedback.eulr.imu.yaw, M_2PI);
+  if (gimbal_yaw_dither_enable != 0U &&
+      g->mode == GIMBAL_MODE_ABSOLUTE &&
+      fabsf(yaw_error) > gimbal_yaw_friction_deadband_rad &&
+      fabsf(yaw_error) < 0.02617994f && /* 1.5 deg */
+      fabsf(g->feedback.gyro.z) < 0.01745329f) { /* 1 deg/s */
+    gimbal_yaw_dither_phase +=
+        M_2PI * gimbal_yaw_dither_frequency_hz * g->dt;
+    if (gimbal_yaw_dither_phase >= M_2PI)
+      gimbal_yaw_dither_phase -= M_2PI;
+    gimbal_yaw_dither_output =
+        gimbal_yaw_dither_amplitude * sinf(gimbal_yaw_dither_phase);
+  } else {
+    gimbal_yaw_dither_phase = 0.0f;
+    gimbal_yaw_dither_output = 0.0f;
+  }
+  g->out[GIMBAL_ACTR_YAW_IDX] += gimbal_yaw_dither_output;
 
   /* 输出滤波 */
   for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++)
