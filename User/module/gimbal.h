@@ -12,6 +12,7 @@ extern "C" {
 #include "component\ahrs.h"
 #include "component\cmd.h"
 #include "component\filter.h"
+#include "component\gimbal_ff.h"
 #include "component\ladrc.h"
 #include "component\pid.h"
 #include "device\bmi088.h"
@@ -32,8 +33,9 @@ extern "C" {
 #define GIMBAL_TEST_PIT_STEP_MAX_RAD (0.03490659f)   /* 2 deg */
 #define GIMBAL_TEST_PIT_TARGET_MAX_RAD (0.08726646f) /* 5 deg */
 #define GIMBAL_TEST_PIT_HARD_MAX_RAD (0.12217305f)   /* 7 deg */
-#define GIMBAL_TEST_RATE_MAX_RAD_S (3.5f)            /* about 200 deg/s */
-#define GIMBAL_TEST_OUTPUT_MAX (0.15f)               /* about 0.45 A */
+#define GIMBAL_TEST_YAW_RATE_MAX_RAD_S (6.0f)        /* about 344 deg/s */
+#define GIMBAL_TEST_PIT_RATE_MAX_RAD_S (3.5f)        /* about 200 deg/s */
+#define GIMBAL_TEST_OUTPUT_MAX (0.3f)               /* about 0.45 A */
 #define GIMBAL_TEST_PIT_OUTPUT_MAX (0.10f)           /* about 0.30 A */
 
 /* Exported macro ----------------------------------------------------------- */
@@ -58,7 +60,7 @@ enum Gimbal_Acuator_e {
 typedef enum {
   GIMBAL_TEST_STOP_NONE = 0,
   GIMBAL_TEST_STOP_COMMAND = 1,
-  GIMBAL_TEST_STOP_TIMEOUT = 2,
+  GIMBAL_TEST_STOP_TIMEOUT = 2, /* Reserved legacy code; no serial timeout. */
   GIMBAL_TEST_STOP_YAW_TRAVEL = 3,
   GIMBAL_TEST_STOP_RATE = 4,
   GIMBAL_TEST_STOP_INVALID_FEEDBACK = 5,
@@ -94,6 +96,7 @@ typedef struct {
 
 /* 云台反馈数据的结构体，包含反馈控制用的反馈数据 */
 typedef struct {
+  AHRS_Accl_t accl; /* Raw BMI088 acceleration, in g. */
   AHRS_Gyro_t gyro; /* IMU的陀螺仪数据 */
 
   struct {
@@ -150,14 +153,6 @@ extern volatile uint8_t gimbal_ladrc_yaw_enable;
 extern volatile uint8_t gimbal_ladrc_pit_enable;
 extern volatile LADRC_Params_t gimbal_ladrc_yaw_param;
 extern volatile LADRC_Params_t gimbal_ladrc_pit_param;
-/* Yaw friction feedforward uses normalized GM6020 command units. */
-extern volatile uint8_t gimbal_yaw_friction_enable;
-extern volatile float gimbal_yaw_friction_static;
-extern volatile float gimbal_yaw_friction_coulomb;
-extern volatile float gimbal_yaw_friction_deadband_rad;
-extern volatile float gimbal_yaw_friction_transition_rad_s;
-extern volatile float gimbal_yaw_friction_slew_per_s;
-extern volatile float gimbal_yaw_friction_output;
 extern volatile uint8_t gimbal_yaw_dither_enable;
 extern volatile float gimbal_yaw_dither_amplitude;
 extern volatile float gimbal_yaw_dither_frequency_hz;

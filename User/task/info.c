@@ -24,13 +24,6 @@ extern volatile uint8_t gimbal_test_stop_reason;
 extern volatile uint8_t gimbal_yaw_chirp_active;
 extern volatile uint8_t gimbal_yaw_chirp_down;
 extern volatile uint32_t gimbal_yaw_chirp_start_tick;
-extern volatile uint8_t gimbal_yaw_friction_enable;
-extern volatile float gimbal_yaw_friction_static;
-extern volatile float gimbal_yaw_friction_coulomb;
-extern volatile float gimbal_yaw_friction_deadband_rad;
-extern volatile float gimbal_yaw_friction_transition_rad_s;
-extern volatile float gimbal_yaw_friction_slew_per_s;
-extern volatile float gimbal_yaw_friction_output;
 extern volatile uint8_t gimbal_yaw_dither_enable;
 extern volatile float gimbal_yaw_dither_amplitude;
 extern volatile float gimbal_yaw_dither_frequency_hz;
@@ -98,8 +91,28 @@ static uint8_t Gimbal_ParseLADRCParams(const char *text, LADRC_Params_t *p) {
   return 1U;
 }
 
+static uint8_t Gimbal_ParseFive(const char *text, float value[5]) {
+  const char *cursor = text;
+  for (uint8_t k = 0U; k < 5U; k++) {
+    char *end;
+    value[k] = strtof(cursor, &end);
+    if (end == cursor || !isfinite(value[k])) return 0U;
+    if (k < 4U) {
+      if (*end != ',') return 0U;
+      cursor = end + 1;
+    } else if (*end != '\0') {
+      return 0U;
+    }
+  }
+  return 1U;
+}
+
 /* Bench commands are ASCII lines terminated by CR or LF. */
 static void Gimbal_ParseCommand(char *cmd) {
+  /* Command names are case insensitive; numeric exponents also accept E. */
+  for (char *p = cmd; *p != '\0'; ++p) {
+    if (*p >= 'a' && *p <= 'z') *p = (char)(*p - 'a' + 'A');
+  }
   if (strcmp(cmd, "STOP") == 0 || strcmp(cmd, "ENABLE=0") == 0) {
     Gimbal_SerialStop(GIMBAL_TEST_STOP_COMMAND);
     BSP_USB_Printf("ack:STOP\r\n");
@@ -220,7 +233,9 @@ static void Gimbal_ParseCommand(char *cmd) {
         "ack:GET,en=%u,serial=%u,stop=%u,yaw=%.3f,travel=%.3f,"
         "yp=%.4f,%.4f,%.4f,%.4f,%.4f,"
         "pp=%.4f,%.4f,%.4f,%.4f,%.4f,"
-        "yff=%u,%.4f,%.4f,%.3f,%.3f,%.3f\r\n",
+        "yff=%u,%.4f,%.4f,%.3f,%.3f,%.3f,"
+        "pff=%u,%.4f,%.4f,%.3f,%.3f,%.3f,%.4f,"
+        "pgrav=%u,%.4f,%.3f,%.4f\r\n",
         (unsigned int)gimbal_test_enable,
         (unsigned int)gimbal_serial_control_active,
         (unsigned int)gimbal_test_stop_reason,
@@ -230,11 +245,21 @@ static void Gimbal_ParseCommand(char *cmd) {
         gimbal_ladrc_yaw_param.out_limit, gimbal_ladrc_pit_param.r,
         gimbal_ladrc_pit_param.b0, gimbal_ladrc_pit_param.wc,
         gimbal_ladrc_pit_param.w0, gimbal_ladrc_pit_param.out_limit,
-        (unsigned int)gimbal_yaw_friction_enable,
-        gimbal_yaw_friction_static, gimbal_yaw_friction_coulomb,
-        gimbal_yaw_friction_deadband_rad * M_RAD2DEG_MULT,
-        gimbal_yaw_friction_transition_rad_s * M_RAD2DEG_MULT,
-        gimbal_yaw_friction_slew_per_s);
+        (unsigned int)gimbal_yaw_friction.enable,
+        gimbal_yaw_friction.static_output, gimbal_yaw_friction.coulomb_output,
+        gimbal_yaw_friction.deadband_rad * M_RAD2DEG_MULT,
+        gimbal_yaw_friction.transition_rad_s * M_RAD2DEG_MULT,
+        gimbal_yaw_friction.slew_per_s,
+        (unsigned int)gimbal_pitch_friction.enable,
+        gimbal_pitch_friction.static_output,
+        gimbal_pitch_friction.coulomb_output,
+        gimbal_pitch_friction.deadband_rad * M_RAD2DEG_MULT,
+        gimbal_pitch_friction.transition_rad_s * M_RAD2DEG_MULT,
+        gimbal_pitch_friction.slew_per_s, gimbal_pitch_friction.output,
+        (unsigned int)gimbal_pitch_gravity.enable,
+        gimbal_pitch_gravity.amplitude,
+        gimbal_pitch_gravity.phase_rad * M_RAD2DEG_MULT,
+        gimbal_pitch_gravity.output);
     return;
   }
 
@@ -269,10 +294,10 @@ static void Gimbal_ParseCommand(char *cmd) {
   }
 
   if (strcmp(cmd, "YFF=0") == 0 || strcmp(cmd, "YFF=1") == 0) {
-    gimbal_yaw_friction_enable = cmd[4] == '1' ? 1U : 0U;
+    gimbal_yaw_friction.enable = cmd[4] == '1' ? 1U : 0U;
     Gimbal_SerialTouch();
     BSP_USB_Printf("ack:YFF=%u\r\n",
-                   (unsigned int)gimbal_yaw_friction_enable);
+                   (unsigned int)gimbal_yaw_friction.enable);
     return;
   }
 
@@ -305,14 +330,77 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     osKernelLock();
-    gimbal_yaw_friction_static = value[0];
-    gimbal_yaw_friction_coulomb = value[1];
-    gimbal_yaw_friction_deadband_rad = value[2] * M_DEG2RAD_MULT;
-    gimbal_yaw_friction_transition_rad_s = value[3] * M_DEG2RAD_MULT;
-    gimbal_yaw_friction_slew_per_s = value[4];
+    gimbal_yaw_friction.static_output = value[0];
+    gimbal_yaw_friction.coulomb_output = value[1];
+    gimbal_yaw_friction.deadband_rad = value[2] * M_DEG2RAD_MULT;
+    gimbal_yaw_friction.transition_rad_s = value[3] * M_DEG2RAD_MULT;
+    gimbal_yaw_friction.slew_per_s = value[4];
     Gimbal_SerialTouch();
     osKernelUnlock();
     BSP_USB_Printf("ack:YFFPARAM\r\n");
+    return;
+  }
+
+  if (strcmp(cmd, "PFF=0") == 0 || strcmp(cmd, "PFF=1") == 0) {
+    gimbal_pitch_friction.enable = cmd[4] == '1' ? 1U : 0U;
+    Gimbal_SerialTouch();
+    BSP_USB_Printf("ack:PFF=%u\r\n",
+                   (unsigned int)gimbal_pitch_friction.enable);
+    return;
+  }
+
+  if (strncmp(cmd, "PFFPARAM=", 9) == 0) {
+    float value[5];
+    if (Gimbal_ParseFive(cmd + 9, value) == 0U || value[0] < 0.0f ||
+        value[0] > 0.06f || value[1] < 0.0f || value[1] > value[0] ||
+        value[2] < 0.2f || value[2] > 3.0f || value[3] < 2.0f ||
+        value[3] > 30.0f || value[4] < 0.02f || value[4] > 0.50f) {
+      BSP_USB_Printf("err:PFFPARAM,range\r\n");
+      return;
+    }
+    osKernelLock();
+    gimbal_pitch_friction.static_output = value[0];
+    gimbal_pitch_friction.coulomb_output = value[1];
+    gimbal_pitch_friction.deadband_rad = value[2] * M_DEG2RAD_MULT;
+    gimbal_pitch_friction.transition_rad_s = value[3] * M_DEG2RAD_MULT;
+    gimbal_pitch_friction.slew_per_s = value[4];
+    Gimbal_SerialTouch();
+    osKernelUnlock();
+    BSP_USB_Printf("ack:PFFPARAM\r\n");
+    return;
+  }
+
+  if (strcmp(cmd, "PGRAV=0") == 0 || strcmp(cmd, "PGRAV=1") == 0) {
+    gimbal_pitch_gravity.enable = cmd[6] == '1' ? 1U : 0U;
+    Gimbal_SerialTouch();
+    BSP_USB_Printf("ack:PGRAV=%u\r\n",
+                   (unsigned int)gimbal_pitch_gravity.enable);
+    return;
+  }
+
+  if (strncmp(cmd, "PGRAVPARAM=", 11) == 0) {
+    float value[2];
+    const char *cursor = cmd + 11;
+    char *end;
+    value[0] = strtof(cursor, &end);
+    if (end == cursor || *end != ',' || !isfinite(value[0])) {
+      BSP_USB_Printf("err:PGRAVPARAM,format\r\n");
+      return;
+    }
+    cursor = end + 1;
+    value[1] = strtof(cursor, &end);
+    if (end == cursor || *end != '\0' || !isfinite(value[1]) ||
+        value[0] < -0.10f || value[0] > 0.10f || value[1] < -180.0f ||
+        value[1] > 180.0f) {
+      BSP_USB_Printf("err:PGRAVPARAM,range\r\n");
+      return;
+    }
+    osKernelLock();
+    gimbal_pitch_gravity.amplitude = value[0];
+    gimbal_pitch_gravity.phase_rad = value[1] * M_DEG2RAD_MULT;
+    Gimbal_SerialTouch();
+    osKernelUnlock();
+    BSP_USB_Printf("ack:PGRAVPARAM\r\n");
     return;
   }
 
@@ -350,27 +438,48 @@ static void Gimbal_ParseCommand(char *cmd) {
   }
 
   float degree;
-  if (strncmp(cmd, "YAWREL=", 7) == 0) {
-    if (gimbal_serial_control_active == 0U ||
-        Gimbal_ParseNumber(cmd + 7, &degree) == 0U ||
-        fabsf(degree * M_DEG2RAD_MULT) > GIMBAL_TEST_YAW_STEP_MAX_RAD) {
-      BSP_USB_Printf("err:YAWREL,state_or_range\r\n");
+  const uint8_t yaw_relative = strncmp(cmd, "YAWREL=", 7) == 0;
+  const uint8_t yaw_absolute = strncmp(cmd, "YAWABS=", 7) == 0;
+  if (yaw_relative || yaw_absolute || strncmp(cmd, "YAW=", 4) == 0) {
+    const char *name = yaw_relative ? "YAWREL" : (yaw_absolute ? "YAWABS" : "YAW");
+    const char *number = cmd + ((yaw_relative || yaw_absolute) ? 7 : 4);
+    if (Gimbal_ParseNumber(number, &degree) == 0U ||
+        (yaw_relative && fabsf(degree * M_DEG2RAD_MULT) >
+                             GIMBAL_TEST_YAW_STEP_MAX_RAD) ||
+        (!yaw_relative && (degree < -180.0f || degree > 360.0f))) {
+      BSP_USB_Printf("err:%s,range\r\n", name);
       return;
     }
-    float target = gimbal.feedback.eulr.imu.yaw;
+
+    /* Check state and commit under the same lock: a protection stop must
+     * not race with this command and leave a new target marked valid. */
+    osKernelLock();
+    if (gimbal_serial_control_active == 0U || gimbal_test_enable == 0U) {
+      osKernelUnlock();
+      BSP_USB_Printf("err:%s,disabled\r\n", name);
+      return;
+    }
+    const float feedback = gimbal.feedback.eulr.imu.yaw;
+    if (!isfinite(feedback) || !isfinite(gimbal_yaw_test_origin_rad)) {
+      osKernelUnlock();
+      BSP_USB_Printf("err:%s,feedback\r\n", name);
+      return;
+    }
+    float target = yaw_relative ? feedback : 0.0f;
     CircleAdd(&target, degree * M_DEG2RAD_MULT, M_2PI);
     if (fabsf(CircleError(target, gimbal_yaw_test_origin_rad, M_2PI)) >
         GIMBAL_TEST_YAW_TARGET_MAX_RAD) {
-      BSP_USB_Printf("err:YAWREL,travel\r\n");
+      osKernelUnlock();
+      BSP_USB_Printf("err:%s,travel\r\n", name);
       return;
     }
-    osKernelLock();
     gimbal_yaw_chirp_active = 0U;
     gimbal_yaw_target_rad = target;
     gimbal_yaw_target_valid = 1U;
     Gimbal_SerialTouch();
     osKernelUnlock();
-    BSP_USB_Printf("ack:YAWREL=%.3f\r\n", degree);
+    BSP_USB_Printf("ack:%s=%.3f\r\n", name,
+                   yaw_relative ? degree : Angle_Degrees360(target));
     return;
   }
 
@@ -399,31 +508,6 @@ static void Gimbal_ParseCommand(char *cmd) {
     return;
   }
 
-  if (strncmp(cmd, "YAW=", 4) == 0) {
-    if (gimbal_serial_control_active == 0U ||
-        Gimbal_ParseNumber(cmd + 4, &degree) == 0U || degree < -180.0f ||
-        degree > 360.0f) {
-      BSP_USB_Printf("err:YAW,state_or_range\r\n");
-      return;
-    }
-    if (degree < 0.0f) degree += 360.0f;
-    if (degree >= 360.0f) degree -= 360.0f;
-    const float target = degree * M_DEG2RAD_MULT;
-    if (fabsf(CircleError(target, gimbal_yaw_test_origin_rad, M_2PI)) >
-        GIMBAL_TEST_YAW_TARGET_MAX_RAD) {
-      BSP_USB_Printf("err:YAW,travel\r\n");
-      return;
-    }
-    osKernelLock();
-    gimbal_yaw_chirp_active = 0U;
-    gimbal_yaw_target_rad = target;
-    gimbal_yaw_target_valid = 1U;
-    Gimbal_SerialTouch();
-    osKernelUnlock();
-    BSP_USB_Printf("ack:YAW=%.3f\r\n", degree);
-    return;
-  }
-
   BSP_USB_Printf("err:UNKNOWN\r\n");
 }
 
@@ -449,8 +533,6 @@ void Task_Info(void *argument) {
   float yaw_fb_continuous = 0.0f;
   float last_yaw_fb = 0.0f;
   uint8_t yaw_fb_ready = 0U;
-  float pit_display_offset = 0.0f;
-  uint8_t pit_fb_ready = 0U;
   uint32_t tick = osKernelGetTickCount();
   while (1) {
 #ifdef DEBUG
@@ -505,6 +587,12 @@ void Task_Info(void *argument) {
     float yaw_origin;
     uint8_t stop_reason;
     float yaw_friction_ff;
+    float gyro_x;
+    float gyro_y;
+    float gyro_z;
+    float accl_x;
+    float accl_y;
+    float accl_z;
 
     /* Copy one coherent sample; do not print while the kernel is locked. */
     osKernelLock();
@@ -550,7 +638,13 @@ void Task_Info(void *argument) {
     pit_temp = gimbal.feedback.motor.pit_temp;
     yaw_origin = gimbal_yaw_test_origin_rad;
     stop_reason = gimbal_test_stop_reason;
-    yaw_friction_ff = gimbal_yaw_friction_output;
+    yaw_friction_ff = gimbal_yaw_friction.output;
+    gyro_x = gimbal.feedback.gyro.x;
+    gyro_y = gimbal.feedback.gyro.y;
+    gyro_z = gimbal.feedback.gyro.z;
+    accl_x = gimbal.feedback.accl.x;
+    accl_y = gimbal.feedback.accl.y;
+    accl_z = gimbal.feedback.accl.z;
     osKernelUnlock();
 
     if (isfinite(yaw_fb)) {
@@ -566,16 +660,12 @@ void Task_Info(void *argument) {
     const float yaw_angle_error =
         FireWater_Safe(CircleError(yaw_sp, yaw_fb, M_2PI) * M_RAD2DEG_MULT);
     const float yaw_sp_continuous = yaw_fb_continuous + yaw_angle_error;
-    /* Choose the display turn once. Crossing zero must not move the target
-     * trace by 360 deg along with the feedback. Control remains in rad. */
-    if (pit_fb_ready == 0U && isfinite(pit_fb)) {
-      pit_display_offset = pit_fb < 0.0f ? 360.0f : 0.0f;
-      pit_fb_ready = 1U;
-    }
-    const float pit_fb_degrees = pit_fb * M_RAD2DEG_MULT + pit_display_offset;
+    /* Pitch Euler feedback is signed (-90..+90 deg); do not wrap it into
+     * [0..360) for telemetry. The control loop remains in radians. */
+    const float pit_fb_degrees = pit_fb * M_RAD2DEG_MULT;
     const float pit_angle_error =
         FireWater_Safe(CircleError(pit_sp, pit_fb, M_2PI) * M_RAD2DEG_MULT);
-    const float pit_sp_degrees = pit_sp * M_RAD2DEG_MULT + pit_display_offset;
+    const float pit_sp_degrees = pit_sp * M_RAD2DEG_MULT;
 
     /* FireWater yaw channels, in order:
      * target/feedback continuous angle (deg), angular speed (deg/s),
@@ -588,12 +678,14 @@ void Task_Info(void *argument) {
      * output, encoder angle (0..360 deg), LADRC enable and target valid.
      * Finally: limited Pitch reference (deg), limit active, LADRC output,
      * MCU time (s), actual GM6020 currents (A), temperatures (deg C), stop
-     * reason, Yaw enable origin and travel (deg).
+     * reason, Yaw enable origin and travel (deg), then raw BMI088 gyro
+     * x/y/z (deg/s) and accelerometer x/y/z (g).
      */
     BSP_USB_Printf(
         "yaw:%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%u,"
         "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%.6f,%u,%.6f,"
-        "%.6f,%.6f,%.6f,%.6f,%.6f,%u,%.6f,%.6f,%.6f\r\n",
+        "%.6f,%.6f,%.6f,%.6f,%.6f,%u,%.6f,%.6f,%.6f,"
+        "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\r\n",
         FireWater_Safe(yaw_sp_continuous), FireWater_Safe(yaw_fb_continuous),
         FireWater_Safe(yaw_rate * M_RAD2DEG_MULT),
         yaw_angle_error,
@@ -610,7 +702,7 @@ void Task_Info(void *argument) {
         Angle_Degrees360(pit_encoder),
         (unsigned int)gimbal_ladrc_pit_enable,
         (unsigned int)gimbal_pit_target_valid,
-        FireWater_Safe(pit_control_target * M_RAD2DEG_MULT + pit_display_offset),
+        FireWater_Safe(pit_control_target * M_RAD2DEG_MULT),
         (unsigned int)pit_limit_active, FireWater_Safe(pit_ladrc_output),
         (float)osKernelGetTickCount() / (float)osKernelGetTickFreq(),
         FireWater_Safe(yaw_actual_current), FireWater_Safe(pit_actual_current),
@@ -619,7 +711,11 @@ void Task_Info(void *argument) {
         FireWater_Safe(yaw_origin * M_RAD2DEG_MULT),
         FireWater_Safe(CircleError(yaw_fb, yaw_origin, M_2PI) *
                        M_RAD2DEG_MULT),
-        FireWater_Safe(yaw_friction_ff));
+        FireWater_Safe(yaw_friction_ff),
+        FireWater_Safe(gyro_x * M_RAD2DEG_MULT),
+        FireWater_Safe(gyro_y * M_RAD2DEG_MULT),
+        FireWater_Safe(gyro_z * M_RAD2DEG_MULT),
+        FireWater_Safe(accl_x), FireWater_Safe(accl_y), FireWater_Safe(accl_z));
 
     tick += delay_tick;
     osDelayUntil(tick);

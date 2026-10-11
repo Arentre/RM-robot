@@ -49,7 +49,8 @@ void LADRC_Reset(LADRC_t *ctrl, float angle, float angular_speed) {
   ctrl->output = 0.0f;
 }
 
-float LADRC_Update(LADRC_t *ctrl, float reference, float feedback) {
+float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
+                   float angular_speed) {
   if (ctrl == NULL || !isfinite(reference) || !isfinite(feedback)) return 0.0f;
 
   /* LTD: transition the requested angle smoothly. */
@@ -72,9 +73,12 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback) {
   ctrl->z2_i = dz2;
   ctrl->z1_i = dz1;
 
-  /* LSEF: normalized motor command with disturbance compensation. */
+  /* LSEF: use the measured angular speed continuously in the derivative
+   * feedback term.  Keep the LESO speed state for disturbance observation;
+   * this avoids replacing the observer state with a noisy sensor sample. */
+  const float rate_feedback = isfinite(angular_speed) ? angular_speed : ctrl->z2;
   const float u0 = ctrl->kp * (ctrl->v1 - ctrl->z1) +
-                   ctrl->kd * (ctrl->v2 - ctrl->z2);
+                   ctrl->kd * (ctrl->v2 - rate_feedback);
   const float output = (u0 - ctrl->z3) / ctrl->param.b0;
   if (!isfinite(output) || !isfinite(ctrl->z1) || !isfinite(ctrl->z2) ||
       !isfinite(ctrl->z3) || !isfinite(ctrl->v1) || !isfinite(ctrl->v2)) {

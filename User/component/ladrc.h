@@ -30,7 +30,11 @@ typedef struct {
 /* Adapted from the supplied Sguan_Ladrc LTD + LESO + LSEF equations. */
 int LADRC_Init(LADRC_t *ctrl, const volatile LADRC_Params_t *param, float T);
 void LADRC_Reset(LADRC_t *ctrl, float angle, float angular_speed);
-float LADRC_Update(LADRC_t *ctrl, float reference, float feedback);
+/* Update the angle loop with the measured angular speed for derivative
+ * feedback.  All signals use the same units as the existing angle loop
+ * (radians and radians/second). */
+float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
+                   float angular_speed);
 
 #ifdef __cplusplus
 }

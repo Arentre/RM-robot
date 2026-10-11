@@ -18,21 +18,11 @@ volatile uint8_t gimbal_ladrc_pit_enable = 0U;
 
 /* 2026-10-07 实机扫频和两次 30 deg 往返验证后的 Yaw 参数。 */
 volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
-    .r = 10.0f, .b0 = 500.0f, .wc = 12.0f, .w0 = 48.0f,
-    .out_limit = 0.10f};
+    .r = 10.0f, .b0 = 500.0f, .wc = 12.0f, .w0 = 40.0f,
+    .out_limit = 0.30f};
 volatile LADRC_Params_t gimbal_ladrc_pit_param = {
-    .r = 2.5f, .b0 = 120.0f, .wc = 1.5f, .w0 = 3.0f,
-    .out_limit = 0.03f};
-/* Validated on 2 deg and 30 deg hardware moves.  YFF=0 can disable it at
- * runtime for A/B comparison. */
-volatile uint8_t gimbal_yaw_friction_enable = 1U;
-volatile float gimbal_yaw_friction_static = 0.035f;
-volatile float gimbal_yaw_friction_coulomb = 0.020f;
-volatile float gimbal_yaw_friction_deadband_rad = 0.00349066f; /* 0.2 deg */
-volatile float gimbal_yaw_friction_transition_rad_s =
-    0.08726646f; /* 5 deg/s */
-volatile float gimbal_yaw_friction_slew_per_s = 0.12f;
-volatile float gimbal_yaw_friction_output = 0.0f;
+    .r = 10.0f, .b0 = 500.0f, .wc = 8.0f, .w0 = 30.0f,
+    .out_limit = 0.3f};
 volatile uint8_t gimbal_yaw_dither_enable = 1U;
 volatile float gimbal_yaw_dither_amplitude = 0.008f;
 volatile float gimbal_yaw_dither_frequency_hz = 25.0f;
@@ -40,29 +30,32 @@ volatile float gimbal_yaw_dither_output = 0.0f;
 static float gimbal_yaw_dither_phase = 0.0f;
 /* Private function  -------------------------------------------------------- */
 
-static float Gimbal_YawFrictionFeedforward(const Gimbal_t *g) {
-  if (gimbal_yaw_friction_enable == 0U ||
-      gimbal_pitch_protect_active != 0U ||
-      g->mode != GIMBAL_MODE_ABSOLUTE)
-    return 0.0f;
+static void Gimbal_ApplyFeedforward(Gimbal_t *g) {
+  if (g == NULL || g->mode != GIMBAL_MODE_ABSOLUTE ||
+      gimbal_pitch_protect_active != 0U) {
+    GimbalFriction_Reset(&gimbal_yaw_friction);
+    GimbalFriction_Reset(&gimbal_pitch_friction);
+    GimbalGravity_Reset(&gimbal_pitch_gravity);
+    return;
+  }
 
-  const float error = CircleError(g->setpoint.eulr.yaw,
-                                  g->feedback.eulr.imu.yaw, M_2PI);
-  const float abs_error = fabsf(error);
-  if (abs_error <= gimbal_yaw_friction_deadband_rad) return 0.0f;
+  const float yaw_error = CircleError(g->setpoint.eulr.yaw,
+                                      g->feedback.eulr.imu.yaw, M_2PI);
+  g->out[GIMBAL_ACTR_YAW_IDX] += GimbalFriction_Update(
+      &gimbal_yaw_friction, yaw_error, g->feedback.gyro.z, g->dt);
 
-  float error_scale =
-      (abs_error - gimbal_yaw_friction_deadband_rad) /
-      (2.0f * gimbal_yaw_friction_deadband_rad);
-  if (error_scale > 1.0f) error_scale = 1.0f;
-
-  float speed_ratio = fabsf(g->feedback.gyro.z) /
-                      gimbal_yaw_friction_transition_rad_s;
-  if (speed_ratio > 1.0f) speed_ratio = 1.0f;
-  const float magnitude =
-      gimbal_yaw_friction_static * (1.0f - speed_ratio) +
-      gimbal_yaw_friction_coulomb * speed_ratio;
-  return (error > 0.0f ? 1.0f : -1.0f) * magnitude * error_scale;
+  if (gimbal_ladrc_pit_enable != 0U) {
+    const float pitch_error = CircleError(g->pit_control_target,
+                                          g->feedback.eulr.imu.pit, M_2PI);
+    g->out[GIMBAL_ACTR_PIT_IDX] += GimbalFriction_Update(
+        &gimbal_pitch_friction, pitch_error, g->feedback.gyro.y, g->dt);
+    g->out[GIMBAL_ACTR_PIT_IDX] +=
+        GimbalGravity_Update(&gimbal_pitch_gravity,
+                             g->feedback.eulr.imu.pit);
+  } else {
+    GimbalFriction_Reset(&gimbal_pitch_friction);
+    GimbalGravity_Reset(&gimbal_pitch_gravity);
+  }
 }
 
 static uint8_t Gimbal_LADRCParamChanged(
@@ -92,7 +85,8 @@ static float Gimbal_LADRCControl(LADRC_t *ctrl,
       ctrl->z1 + CircleError(feedback, ctrl->z1, M_2PI);
   const float reference_continuous =
       feedback_continuous + CircleError(setpoint, feedback, M_2PI);
-  return LADRC_Update(ctrl, reference_continuous, feedback_continuous);
+  return LADRC_Update(ctrl, reference_continuous, feedback_continuous,
+                      angular_speed);
 }
 
 /**
@@ -325,23 +319,13 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
       break;
   }
 
-  const float friction_target = Gimbal_YawFrictionFeedforward(g);
-  if (friction_target == 0.0f) {
-    gimbal_yaw_friction_output = 0.0f;
-  } else {
-    float delta = friction_target - gimbal_yaw_friction_output;
-    const float max_delta = gimbal_yaw_friction_slew_per_s * g->dt;
-    if (delta > max_delta) delta = max_delta;
-    if (delta < -max_delta) delta = -max_delta;
-    gimbal_yaw_friction_output += delta;
-  }
-  g->out[GIMBAL_ACTR_YAW_IDX] += gimbal_yaw_friction_output;
+  Gimbal_ApplyFeedforward(g);
 
   const float yaw_error =
       CircleError(g->setpoint.eulr.yaw, g->feedback.eulr.imu.yaw, M_2PI);
   if (gimbal_yaw_dither_enable != 0U &&
       g->mode == GIMBAL_MODE_ABSOLUTE &&
-      fabsf(yaw_error) > gimbal_yaw_friction_deadband_rad &&
+      fabsf(yaw_error) > gimbal_yaw_friction.deadband_rad &&
       fabsf(yaw_error) < 0.02617994f && /* 1.5 deg */
       fabsf(g->feedback.gyro.z) < 0.01745329f) { /* 1 deg/s */
     gimbal_yaw_dither_phase +=

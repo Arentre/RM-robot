@@ -1480,6 +1480,11 @@
               <FilePath>..\User\component\ladrc.c</FilePath>
             </File>
             <File>
+              <FileName>gimbal_ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\component\gimbal_ff.c</FilePath>
+            </File>
+            <File>
               <FileName>user_math.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\component\user_math.c</FilePath>
@@ -3066,6 +3071,11 @@
               <FileName>ladrc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\component\ladrc.c</FilePath>
+            </File>
+            <File>
+              <FileName>gimbal_ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\component\gimbal_ff.c</FilePath>
             </File>
             <File>
               <FileName>user_math.c</FileName>
