@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,6 +13,7 @@ typedef struct {
   float wc;         /* controller bandwidth, rad/s */
   float w0;         /* observer bandwidth, rad/s; independent from wc */
   float out_limit;  /* absolute normalized motor command limit */
+  float deadband_rad; /* settled angle tolerance; 0 disables it */
 } LADRC_Params_t;
 
 typedef struct {
@@ -25,6 +28,7 @@ typedef struct {
   float v1_i, v2_i;   /* previous derivatives for trapezoidal integration */
   float z1_i, z2_i, z3_i;
   float output;       /* saturated output; also LESO's previous input */
+  uint8_t deadband_active;
 } LADRC_t;
 
 /* Adapted from the supplied Sguan_Ladrc LTD + LESO + LSEF equations. */

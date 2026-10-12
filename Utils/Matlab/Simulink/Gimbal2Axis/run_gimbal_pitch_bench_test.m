@@ -63,7 +63,7 @@ fprintf('Saved %s and %s\n',csvPath,pngPath);
 end
 
 function [rows,firstMcuTime,origin] = collectPhase(s,duration_s,phase,firstMcuTime,origin)
-rows = zeros(0,36);
+rows = zeros(0,42);
 t0 = tic; lastPing = tic; lastFrame = tic; enableGrace = 0.30;
 while toc(t0) < duration_s
     if toc(lastPing) >= 0.25, writeline(s,'PING'); lastPing = tic; end
@@ -76,7 +76,8 @@ while toc(t0) < duration_s
     line = strtrim(string(readline(s)));
     if ~startsWith(line,'yaw:'), continue; end
     v = str2double(split(extractAfter(line,4),','));
-    if numel(v) ~= 35 || any(~isfinite(v)), continue; end
+    if ~(numel(v) == 35 || numel(v) == 41) || any(~isfinite(v)), continue; end
+    if numel(v) == 35, v(36:41) = NaN; end
     lastFrame = tic;
     if phase == 0 && toc(t0) < enableGrace && (v(12) == 0 || v(22) == 0)
         continue
@@ -88,7 +89,7 @@ while toc(t0) < duration_s
 end
 if isempty(rows)
     writeline(s,'STOP');
-    error('No valid 35-channel telemetry; flash the friction-FF firmware first.');
+    error('No valid telemetry; flash the diagnostic firmware first.');
 end
 end
 
@@ -118,7 +119,8 @@ names = {'YawTarget_deg','YawFeedback_deg','YawRate_deg_s','YawError_deg', ...
     'PitchLimitedTarget_deg','PitchLimitActive','PitchLadrcOutput', ...
     'McuTime_s','YawActualCurrent_A','PitchActualCurrent_A','YawTemp_C', ...
     'PitchTemp_C','StopReason','YawOrigin_deg','YawTravel_deg', ...
-    'YawFrictionFF'};
+    'YawFrictionFF','GyroX_deg_s','GyroY_deg_s','GyroZ_deg_s', ...
+    'AccelX_g','AccelY_g','AccelZ_g'};
 end
 
 function s = getPort(port)

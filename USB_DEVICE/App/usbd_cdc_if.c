@@ -32,6 +32,8 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+/* Owned by the USB transfer until TxState clears. */
+static uint8_t cdc_tx_pending[BSP_USB_MAX_TX_LEN];
 
 /* USER CODE END PV */
 
@@ -287,12 +289,24 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
+  /* USB reset/deconfiguration runs in an interrupt. Keep validation, buffer
+   * copy and submission atomic with respect to that interrupt. */
+  uint32_t irq_state = __get_PRIMASK();
+  __disable_irq();
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED || hcdc == NULL ||
+      Buf == NULL || Len == 0U || Len > sizeof(cdc_tx_pending)) {
+    __set_PRIMASK(irq_state);
+    return USBD_FAIL;
+  }
   if (hcdc->TxState != 0) {
+    __set_PRIMASK(irq_state);
     return USBD_BUSY;
   }
-  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+  memcpy(cdc_tx_pending, Buf, Len);
+  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, cdc_tx_pending, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  __set_PRIMASK(irq_state);
   /* USER CODE END 7 */
   return result;
 }
@@ -322,8 +336,15 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
 uint8_t CDC_ReadyReceive(void) {
-	USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-	return USBD_OK;
+  uint32_t irq_state = __get_PRIMASK();
+  __disable_irq();
+  uint8_t result = USBD_FAIL;
+  if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED &&
+      hUsbDeviceFS.pClassData != NULL) {
+    result = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+  }
+  __set_PRIMASK(irq_state);
+  return result;
 }
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

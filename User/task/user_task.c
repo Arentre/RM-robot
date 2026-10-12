@@ -30,7 +30,8 @@ const osThreadAttr_t attr_atti_esti = {
 const osThreadAttr_t attr_can = {
     .name = "can",
     .priority = osPriorityRealtime,
-    .stack_size = 128 * 4,
+    /* ArmClang debug call chain: 572 bytes, plus exception/context frames. */
+    .stack_size = 256 * 4,
 };
 
 const osThreadAttr_t attr_cap = {
@@ -72,7 +73,8 @@ const osThreadAttr_t attr_ctrl_shoot = {
 const osThreadAttr_t attr_info = {
     .name = "firewater",
     .priority = osPriorityLow,
-    .stack_size = 512 * 4,
+    /* Command/telemetry call chain: 2672 bytes, plus FP/interrupt context. */
+    .stack_size = 1024 * 4,
 };
 
 const osThreadAttr_t attr_monitor = {

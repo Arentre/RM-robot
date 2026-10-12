@@ -22,14 +22,16 @@ uint8_t usb_tx_buf[BSP_USB_MAX_TX_LEN];
 static int8_t BSP_USB_Transmit(uint8_t *buffer, uint16_t len) {
   uint8_t retry = 0;
   do {
-    if (CDC_Transmit_FS(buffer, len) != USBD_OK) {
+    uint8_t result = CDC_Transmit_FS(buffer, len);
+    if (result == USBD_OK) return BSP_OK;
+    if (result == USBD_BUSY) {
       retry++;
       BSP_Delay(10);
     } else {
-      break;
+      return BSP_ERR_NO_DEV;
     }
   } while (retry < 3);
-  return BSP_OK;
+  return BSP_ERR;
 }
 
 /* Exported functions ------------------------------------------------------- */
@@ -37,24 +39,24 @@ int8_t BSP_USB_ReadyReceive(osThreadId_t alert) {
   if (alert == NULL) return BSP_ERR_NULL;
 
   gbsp_usb_alert = alert;
-  CDC_ReadyReceive();
-  return BSP_OK;
+  return CDC_ReadyReceive() == USBD_OK ? BSP_OK : BSP_ERR_NO_DEV;
 }
 
 char BSP_USB_ReadChar(void) { return usb_rx_buf[0]; }
 
 int8_t BSP_USB_Printf(const char *fmt, ...) {
   va_list ap;
-  uint16_t len = 0;
+  int len = 0;
 
   va_start(ap, fmt);
   len =
-      (uint16_t)vsnprintf((char *)usb_tx_buf, BSP_USB_MAX_TX_LEN - 1, fmt, ap);
+      vsnprintf((char *)usb_tx_buf, BSP_USB_MAX_TX_LEN, fmt, ap);
   va_end(ap);
 
   if (len > 0) {
-    BSP_USB_Transmit(usb_tx_buf, len);
-    return BSP_OK;
+    /* vsnprintf returns the required size, which may exceed the buffer. */
+    if (len >= BSP_USB_MAX_TX_LEN) len = BSP_USB_MAX_TX_LEN - 1;
+    return BSP_USB_Transmit(usb_tx_buf, (uint16_t)len);
   } else {
     return BSP_ERR_NULL;
   }

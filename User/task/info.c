@@ -127,9 +127,14 @@ static void Gimbal_ParseCommand(char *cmd) {
   if (strcmp(cmd, "ENABLE=1") == 0) {
     const float yaw = gimbal.feedback.eulr.imu.yaw;
     const float pit = gimbal.feedback.eulr.imu.pit;
-    if (!isfinite(yaw) || !isfinite(pit) || fabsf(pit) > 1.22173048f) {
+    if (!isfinite(yaw) || !isfinite(pit)) {
       Gimbal_SerialStop(GIMBAL_TEST_STOP_INVALID_FEEDBACK);
       BSP_USB_Printf("err:ENABLE,feedback\r\n");
+      return;
+    }
+    if (fabsf(pit) > GIMBAL_PITCH_SAFE_LIMIT_RAD) {
+      Gimbal_SerialStop(GIMBAL_TEST_STOP_PITCH_PROTECT);
+      BSP_USB_Printf("err:ENABLE,pitch_limit\r\n");
       return;
     }
     osKernelLock();
@@ -235,7 +240,9 @@ static void Gimbal_ParseCommand(char *cmd) {
         "pp=%.4f,%.4f,%.4f,%.4f,%.4f,"
         "yff=%u,%.4f,%.4f,%.3f,%.3f,%.3f,"
         "pff=%u,%.4f,%.4f,%.3f,%.3f,%.3f,%.4f,"
-        "pgrav=%u,%.4f,%.3f,%.4f\r\n",
+        "pgrav=%u,%.4f,%.3f,%.4f,"
+        "pit=%.3f,pit_target=%.3f,pitch_enable=%u,"
+        "ydead=%.3f,%u,pdead=%.3f,%u,pfilter=%.3f\r\n",
         (unsigned int)gimbal_test_enable,
         (unsigned int)gimbal_serial_control_active,
         (unsigned int)gimbal_test_stop_reason,
@@ -259,14 +266,64 @@ static void Gimbal_ParseCommand(char *cmd) {
         (unsigned int)gimbal_pitch_gravity.enable,
         gimbal_pitch_gravity.amplitude,
         gimbal_pitch_gravity.phase_rad * M_RAD2DEG_MULT,
-        gimbal_pitch_gravity.output);
+        gimbal_pitch_gravity.output,
+        gimbal.feedback.eulr.imu.pit * M_RAD2DEG_MULT,
+        gimbal_pit_target_rad * M_RAD2DEG_MULT,
+        (unsigned int)gimbal_ladrc_pit_enable,
+        gimbal_ladrc_yaw_param.deadband_rad * M_RAD2DEG_MULT,
+        (unsigned int)(gimbal.ladrc_active[GIMBAL_ACTR_YAW_IDX] != 0U &&
+                       gimbal.mode == GIMBAL_MODE_ABSOLUTE &&
+                       gimbal.ladrc[GIMBAL_ACTR_YAW_IDX].deadband_active != 0U),
+        gimbal_ladrc_pit_param.deadband_rad * M_RAD2DEG_MULT,
+        (unsigned int)(gimbal.ladrc_active[GIMBAL_ACTR_PIT_IDX] != 0U &&
+                       gimbal.mode == GIMBAL_MODE_ABSOLUTE &&
+                       gimbal.ladrc[GIMBAL_ACTR_PIT_IDX].deadband_active != 0U),
+        gimbal_pitch_output_filter_hz);
+    return;
+  }
+
+  if (strncmp(cmd, "YDEAD=", 6) == 0 || strncmp(cmd, "PDEAD=", 6) == 0) {
+    float degree;
+    if (Gimbal_ParseNumber(cmd + 6, &degree) == 0U ||
+        degree < 0.0f || degree > 3.0f) {
+      BSP_USB_Printf("err:%cDEAD,range\r\n", cmd[0]);
+      return;
+    }
+    osKernelLock();
+    volatile LADRC_Params_t *p = cmd[0] == 'Y' ? &gimbal_ladrc_yaw_param :
+                                                &gimbal_ladrc_pit_param;
+    p->deadband_rad = degree * M_DEG2RAD_MULT;
+    Gimbal_SerialTouch();
+    osKernelUnlock();
+    BSP_USB_Printf("ack:%cDEAD=%.3f\r\n", cmd[0], degree);
+    return;
+  }
+
+  if (strncmp(cmd, "PFILTER=", 8) == 0) {
+    float frequency;
+    if (Gimbal_ParseNumber(cmd + 8, &frequency) == 0U ||
+        !(frequency == 0.0f || (frequency >= 5.0f && frequency <= 100.0f))) {
+      BSP_USB_Printf("err:PFILTER,range\r\n");
+      return;
+    }
+    /* Change shaping between trials, never while applying motor current. */
+    osKernelLock();
+    if (gimbal_test_enable != 0U || gimbal_serial_control_active != 0U) {
+      osKernelUnlock();
+      BSP_USB_Printf("err:PFILTER,stop_first\r\n");
+      return;
+    }
+    gimbal_pitch_output_filter_hz = frequency;
+    Gimbal_SerialTouch();
+    osKernelUnlock();
+    BSP_USB_Printf("ack:PFILTER=%.3f\r\n", frequency);
     return;
   }
 
   if (strncmp(cmd, "YPARAM=", 7) == 0) {
-    LADRC_Params_t p;
+    LADRC_Params_t p = {.deadband_rad = gimbal_ladrc_yaw_param.deadband_rad};
     if (Gimbal_ParseLADRCParams(cmd + 7, &p) == 0U ||
-        Gimbal_LADRCParamsSafe(&p, GIMBAL_TEST_OUTPUT_MAX) == 0U) {
+        Gimbal_LADRCParamsSafe(&p, GIMBAL_NORMALIZED_OUTPUT_MAX) == 0U) {
       BSP_USB_Printf("err:YPARAM,range\r\n");
       return;
     }
@@ -279,9 +336,9 @@ static void Gimbal_ParseCommand(char *cmd) {
   }
 
   if (strncmp(cmd, "PPARAM=", 7) == 0) {
-    LADRC_Params_t p;
+    LADRC_Params_t p = {.deadband_rad = gimbal_ladrc_pit_param.deadband_rad};
     if (Gimbal_ParseLADRCParams(cmd + 7, &p) == 0U ||
-        Gimbal_LADRCParamsSafe(&p, GIMBAL_TEST_PIT_OUTPUT_MAX) == 0U) {
+        Gimbal_LADRCParamsSafe(&p, GIMBAL_NORMALIZED_OUTPUT_MAX) == 0U) {
       BSP_USB_Printf("err:PPARAM,range\r\n");
       return;
     }
@@ -443,10 +500,7 @@ static void Gimbal_ParseCommand(char *cmd) {
   if (yaw_relative || yaw_absolute || strncmp(cmd, "YAW=", 4) == 0) {
     const char *name = yaw_relative ? "YAWREL" : (yaw_absolute ? "YAWABS" : "YAW");
     const char *number = cmd + ((yaw_relative || yaw_absolute) ? 7 : 4);
-    if (Gimbal_ParseNumber(number, &degree) == 0U ||
-        (yaw_relative && fabsf(degree * M_DEG2RAD_MULT) >
-                             GIMBAL_TEST_YAW_STEP_MAX_RAD) ||
-        (!yaw_relative && (degree < -180.0f || degree > 360.0f))) {
+    if (Gimbal_ParseNumber(number, &degree) == 0U) {
       BSP_USB_Printf("err:%s,range\r\n", name);
       return;
     }
@@ -460,19 +514,15 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     const float feedback = gimbal.feedback.eulr.imu.yaw;
-    if (!isfinite(feedback) || !isfinite(gimbal_yaw_test_origin_rad)) {
+    if (!isfinite(feedback)) {
       osKernelUnlock();
       BSP_USB_Printf("err:%s,feedback\r\n", name);
       return;
     }
     float target = yaw_relative ? feedback : 0.0f;
-    CircleAdd(&target, degree * M_DEG2RAD_MULT, M_2PI);
-    if (fabsf(CircleError(target, gimbal_yaw_test_origin_rad, M_2PI)) >
-        GIMBAL_TEST_YAW_TARGET_MAX_RAD) {
-      osKernelUnlock();
-      BSP_USB_Printf("err:%s,travel\r\n", name);
-      return;
-    }
+    /* Normalize large values before converting to radians and wrapping.
+     * Yaw still follows the shortest path to a wrapped orientation. */
+    CircleAdd(&target, fmodf(degree, 360.0f) * M_DEG2RAD_MULT, M_2PI);
     gimbal_yaw_chirp_active = 0U;
     gimbal_yaw_target_rad = target;
     gimbal_yaw_target_valid = 1U;
@@ -483,28 +533,41 @@ static void Gimbal_ParseCommand(char *cmd) {
     return;
   }
 
-  if (strncmp(cmd, "PITREL=", 7) == 0) {
-    if (gimbal_serial_control_active == 0U ||
-        gimbal_ladrc_pit_enable == 0U ||
-        Gimbal_ParseNumber(cmd + 7, &degree) == 0U ||
-        fabsf(degree * M_DEG2RAD_MULT) > GIMBAL_TEST_PIT_STEP_MAX_RAD) {
-      BSP_USB_Printf("err:PITREL,state_or_range\r\n");
+  const uint8_t pit_relative = strncmp(cmd, "PITREL=", 7) == 0;
+  const uint8_t pit_absolute = strncmp(cmd, "PITABS=", 7) == 0;
+  if (pit_relative || pit_absolute || strncmp(cmd, "PIT=", 4) == 0) {
+    const char *name = pit_relative ? "PITREL" : (pit_absolute ? "PITABS" : "PIT");
+    const char *number = cmd + ((pit_relative || pit_absolute) ? 7 : 4);
+    if (Gimbal_ParseNumber(number, &degree) == 0U) {
+      BSP_USB_Printf("err:%s,range\r\n", name);
       return;
     }
-    const float target =
-        gimbal.feedback.eulr.imu.pit + degree * M_DEG2RAD_MULT;
-    if (fabsf(target - gimbal_pit_test_origin_rad) >
-            GIMBAL_TEST_PIT_TARGET_MAX_RAD ||
-        fabsf(target) > 1.22173048f) {
-      BSP_USB_Printf("err:PITREL,travel\r\n");
-      return;
-    }
+
     osKernelLock();
+    if (gimbal_serial_control_active == 0U || gimbal_test_enable == 0U ||
+        gimbal_ladrc_pit_enable == 0U) {
+      osKernelUnlock();
+      BSP_USB_Printf("err:%s,disabled\r\n", name);
+      return;
+    }
+    const float feedback = gimbal.feedback.eulr.imu.pit;
+    if (!isfinite(feedback)) {
+      osKernelUnlock();
+      BSP_USB_Printf("err:%s,feedback\r\n", name);
+      return;
+    }
+    const float target = (pit_relative ? feedback : 0.0f) +
+                         degree * M_DEG2RAD_MULT;
+    if (!isfinite(target) || fabsf(target) > GIMBAL_PITCH_SAFE_LIMIT_RAD) {
+      osKernelUnlock();
+      BSP_USB_Printf("err:%s,pitch_limit\r\n", name);
+      return;
+    }
     gimbal_pit_target_rad = target;
     gimbal_pit_target_valid = 1U;
     Gimbal_SerialTouch();
     osKernelUnlock();
-    BSP_USB_Printf("ack:PITREL=%.3f\r\n", degree);
+    BSP_USB_Printf("ack:%s=%.3f\r\n", name, degree);
     return;
   }
 
@@ -527,7 +590,7 @@ void Task_Info(void *argument) {
   osDelay(TASK_INIT_DELAY_INFO);
   BSP_USB_ReadyReceive(osThreadGetId());
 
-  char cmd[32] = {0};
+  char cmd[64] = {0};
   uint8_t cmd_len = 0U;
   uint8_t cmd_overflow = 0U;
   float yaw_fb_continuous = 0.0f;
@@ -547,6 +610,7 @@ void Task_Info(void *argument) {
         if (ch == '\r' || ch == '\n') {
           cmd[cmd_len] = '\0';
           if (cmd_len != 0U && cmd_overflow == 0U) Gimbal_ParseCommand(cmd);
+          if (cmd_overflow != 0U) BSP_USB_Printf("err:COMMAND,too_long\r\n");
           cmd_len = 0U;
           cmd_overflow = 0U;
         } else if (cmd_overflow == 0U && cmd_len < sizeof(cmd) - 1U) {

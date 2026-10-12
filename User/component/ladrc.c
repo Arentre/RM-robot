@@ -17,12 +17,14 @@ int LADRC_Init(LADRC_t *ctrl, const volatile LADRC_Params_t *param, float T) {
                       .b0 = param->b0,
                       .wc = param->wc,
                       .w0 = param->w0,
-                      .out_limit = param->out_limit};
+                      .out_limit = param->out_limit,
+                      .deadband_rad = param->deadband_rad};
   if (!isfinite(T) || T <= 0.0f || !isfinite(p.r) || p.r <= 0.0f ||
       !isfinite(p.b0) || fabsf(p.b0) < 0.000001f ||
       !isfinite(p.wc) || p.wc <= 0.0f ||
       !isfinite(p.w0) || p.w0 <= 0.0f ||
-      !isfinite(p.out_limit) || p.out_limit <= 0.0f) return -1;
+      !isfinite(p.out_limit) || p.out_limit <= 0.0f ||
+      !isfinite(p.deadband_rad) || p.deadband_rad < 0.0f) return -1;
 
   memset(ctrl, 0, sizeof(*ctrl));
   ctrl->param = p;
@@ -47,11 +49,26 @@ void LADRC_Reset(LADRC_t *ctrl, float angle, float angular_speed) {
   ctrl->v1_i = ctrl->v2_i = 0.0f;
   ctrl->z1_i = ctrl->z2_i = ctrl->z3_i = 0.0f;
   ctrl->output = 0.0f;
+  ctrl->deadband_active = 0U;
 }
 
 float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
                    float angular_speed) {
   if (ctrl == NULL || !isfinite(reference) || !isfinite(feedback)) return 0.0f;
+
+  const float rate_feedback = isfinite(angular_speed) ? angular_speed : ctrl->z2;
+  /* Stop building disturbance compensation against stiction once settled.
+   * Exit at 1.5 times the entry angle to avoid noise toggling the gate.
+   * Moving faster than 2 deg/s always resumes measured-rate damping. */
+  const float deadband = ctrl->param.deadband_rad *
+                         (ctrl->deadband_active != 0U ? 1.5f : 1.0f);
+  if (deadband > 0.0f && fabsf(reference - feedback) <= deadband &&
+      isfinite(rate_feedback) && fabsf(rate_feedback) <= 0.03490659f) {
+    LADRC_Reset(ctrl, feedback, 0.0f);
+    ctrl->deadband_active = 1U;
+    return 0.0f;
+  }
+  ctrl->deadband_active = 0U;
 
   /* LTD: transition the requested angle smoothly. */
   const float fh = -ctrl->param.r * ctrl->param.r * (ctrl->v1 - reference)
@@ -76,7 +93,6 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
   /* LSEF: use the measured angular speed continuously in the derivative
    * feedback term.  Keep the LESO speed state for disturbance observation;
    * this avoids replacing the observer state with a noisy sensor sample. */
-  const float rate_feedback = isfinite(angular_speed) ? angular_speed : ctrl->z2;
   const float u0 = ctrl->kp * (ctrl->v1 - ctrl->z1) +
                    ctrl->kd * (ctrl->v2 - rate_feedback);
   const float output = (u0 - ctrl->z3) / ctrl->param.b0;

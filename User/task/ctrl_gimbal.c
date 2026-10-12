@@ -71,10 +71,11 @@ void Task_CtrlGimbal(void *argument) {
                     osWaitForever);
   osMessageQueueGet(task_runtime.msgq.gimbal.eulr_imu,
                     &(gimbal.feedback.eulr.imu), NULL, osWaitForever);
+  osMessageQueueGet(task_runtime.msgq.gimbal.accl, &(gimbal.feedback.accl),
+                    NULL, osWaitForever);
   osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
                     NULL, osWaitForever);
   uint32_t tick = osKernelGetTickCount(); /* 控制任务运行频率的计时 */
-  const uint32_t serial_timeout_tick = osKernelGetTickFreq(); /* 1 second */
   while (1) {
 #ifdef DEBUG
     /* 记录任务所使用的的栈空间 */
@@ -86,12 +87,13 @@ void Task_CtrlGimbal(void *argument) {
     /* 读取控制指令、姿态、IMU数据 */
     osMessageQueueGet(task_runtime.msgq.gimbal.eulr_imu,
                       &(gimbal.feedback.eulr.imu), NULL, 0);
+    osMessageQueueGet(task_runtime.msgq.gimbal.accl, &(gimbal.feedback.accl),
+                      NULL, 0);
     osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
                       NULL, 0);
     /* 任务只提交模式请求。进入 ABS 的瞬间由 Gimbal_SetMode()
      * 锁存当前 yaw/pitch，避免任务层和模块层重复改写目标角。 */
-    /* The internal chirp is generated at the 500 Hz control rate.  It also
-     * services the serial watchdog, so USB only has to carry telemetry. */
+    /* The internal chirp is generated at the 500 Hz control rate. */
     if (gimbal_yaw_chirp_active != 0U) {
       const float elapsed =
           (float)(tick - gimbal_yaw_chirp_start_tick) /
@@ -109,19 +111,10 @@ void Task_CtrlGimbal(void *argument) {
         gimbal_yaw_target_rad = target;
       }
       gimbal_yaw_target_valid = 1U;
-      gimbal_serial_last_command_tick = tick;
     }
 
-    if (gimbal_serial_control_active != 0U &&
-        (uint32_t)(tick - gimbal_serial_last_command_tick) >
-            serial_timeout_tick) {
-      gimbal_test_enable = 0U;
-      gimbal_serial_control_active = 0U;
-      gimbal_yaw_chirp_active = 0U;
-      gimbal_yaw_target_valid = 0U;
-      gimbal_pit_target_valid = 0U;
-      gimbal_test_stop_reason = GIMBAL_TEST_STOP_TIMEOUT;
-    }
+    /* Serial targets latch until replaced, explicitly stopped, or a motion
+     * protection trips. Silence/USB disconnect does not release the gimbal. */
     uint8_t enable = (gimbal_test_enable != 0U) ? 1U : 0U;
     if (enable != 0U) {
       gimbal_cmd.mode = GIMBAL_MODE_ABSOLUTE;
@@ -133,25 +126,13 @@ void Task_CtrlGimbal(void *argument) {
     Gimbal_UpdateFeedback(&gimbal, &can);
 
     if (enable != 0U && gimbal_serial_control_active != 0U) {
-      const float yaw_travel = CircleError(gimbal.feedback.eulr.imu.yaw,
-                                           gimbal_yaw_test_origin_rad, M_2PI);
-      const float pit_travel = gimbal.feedback.eulr.imu.pit -
-                               gimbal_pit_test_origin_rad;
       uint8_t stop_reason = GIMBAL_TEST_STOP_NONE;
       if (!isfinite(gimbal.feedback.eulr.imu.yaw) ||
           !isfinite(gimbal.feedback.eulr.imu.pit) ||
           !isfinite(gimbal.feedback.gyro.y) ||
           !isfinite(gimbal.feedback.gyro.z))
         stop_reason = GIMBAL_TEST_STOP_INVALID_FEEDBACK;
-      else if (fabsf(yaw_travel) > GIMBAL_TEST_YAW_HARD_MAX_RAD)
-        stop_reason = GIMBAL_TEST_STOP_YAW_TRAVEL;
-      else if (fabsf(pit_travel) > GIMBAL_TEST_PIT_HARD_MAX_RAD)
-        stop_reason = GIMBAL_TEST_STOP_PITCH_TRAVEL;
-      else if (fabsf(gimbal.feedback.gyro.z) > GIMBAL_TEST_RATE_MAX_RAD_S ||
-               (gimbal_ladrc_pit_enable != 0U &&
-                fabsf(gimbal.feedback.gyro.y) > GIMBAL_TEST_RATE_MAX_RAD_S))
-        stop_reason = GIMBAL_TEST_STOP_RATE;
-      else if (fabsf(gimbal.feedback.eulr.imu.pit) > 1.22173048f)
+      else if (fabsf(gimbal.feedback.eulr.imu.pit) > GIMBAL_PITCH_SAFE_LIMIT_RAD)
         stop_reason = GIMBAL_TEST_STOP_PITCH_PROTECT;
 
       if (stop_reason != GIMBAL_TEST_STOP_NONE) {
@@ -173,12 +154,7 @@ void Task_CtrlGimbal(void *argument) {
     }
     Gimbal_Control(&gimbal, &gimbal_cmd, tick);
     if (enable != 0U && gimbal_serial_control_active != 0U) {
-      Clip(&gimbal.out[GIMBAL_ACTR_YAW_IDX], -GIMBAL_TEST_OUTPUT_MAX,
-           GIMBAL_TEST_OUTPUT_MAX);
-      if (gimbal_ladrc_pit_enable != 0U)
-        Clip(&gimbal.out[GIMBAL_ACTR_PIT_IDX], -GIMBAL_TEST_PIT_OUTPUT_MAX,
-             GIMBAL_TEST_PIT_OUTPUT_MAX);
-      else
+      if (gimbal_ladrc_pit_enable == 0U)
         gimbal.out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
     }
     Gimbal_DumpOutput(&gimbal, &gimbal_out);

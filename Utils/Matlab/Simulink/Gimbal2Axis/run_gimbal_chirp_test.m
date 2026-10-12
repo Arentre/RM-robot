@@ -33,7 +33,7 @@ pause(0.1);
 writeline(s,'STOP');
 
 rows = [baseline;excitation;recovery];
-data = array2table(rows(:,1:35),'VariableNames',telemetryNames());
+data = array2table(rows(:,1:41),'VariableNames',telemetryNames());
 data.Phase = categorical(rows(:,36),[0 1 2], ...
     {'baseline','chirp','recovery'});
 data.TestTime_s = data.McuTime_s-data.McuTime_s(1);
@@ -77,7 +77,7 @@ fprintf('Saved %s\n',csvPath);
 end
 
 function [rows,origin_deg] = collectFixed(s,duration_s,phase,origin_deg)
-rows = zeros(0,36);
+rows = zeros(0,42);
 t0 = tic; lastPing = tic; lastFrame = tic;
 while toc(t0) < duration_s
     if toc(lastPing) >= 0.25
@@ -106,7 +106,9 @@ end
 line = strtrim(string(readline(s)));
 if ~startsWith(line,'yaw:'), return; end
 candidate = str2double(split(extractAfter(line,4),','));
-if numel(candidate) ~= 35 || any(~isfinite(candidate)), return; end
+if ~(numel(candidate) == 35 || numel(candidate) == 41) || ...
+        any(~isfinite(candidate)), return; end
+if numel(candidate) == 35, candidate(36:41) = NaN; end
 v = candidate;
 lastFrame = tic;
 end
@@ -131,7 +133,9 @@ names = {'YawTarget_deg','YawFeedback_deg','YawRate_deg_s','YawError_deg', ...
     'PitchOutput','PitchEncoder_deg','PitchLadrcEnable','PitchTargetValid', ...
     'PitchLimitedTarget_deg','PitchLimitActive','PitchLadrcOutput', ...
     'McuTime_s','YawActualCurrent_A','PitchActualCurrent_A','YawTemp_C', ...
-    'PitchTemp_C','StopReason','YawOrigin_deg','YawTravel_deg','YawFrictionFF'};
+    'PitchTemp_C','StopReason','YawOrigin_deg','YawTravel_deg', ...
+    'YawFrictionFF','GyroX_deg_s','GyroY_deg_s','GyroZ_deg_s', ...
+    'AccelX_g','AccelY_g','AccelZ_g'};
 end
 
 function s = getPort(port)

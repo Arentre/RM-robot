@@ -52,12 +52,16 @@
 /* TIM7 are used to generater high freq tick for debug. */
 volatile unsigned long high_freq_timer_ticks;
 
+/* Inspect these in the debugger if the scheduler stops on stack overflow. */
+volatile TaskHandle_t stack_overflow_task;
+volatile char stack_overflow_task_name[configMAX_TASK_NAME_LEN];
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4, /* USB init needs 408 bytes before context frames. */
   .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -105,6 +109,15 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
   /* Run time stack overflow checking is performed if
   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
   called if a stack overflow is detected. */
+  stack_overflow_task = xTask;
+  for (uint32_t i = 0; i < configMAX_TASK_NAME_LEN - 1; ++i) {
+    char c = pcTaskName != NULL ? (char)pcTaskName[i] : '\0';
+    stack_overflow_task_name[i] = c;
+    if (c == '\0') {
+      break;
+    }
+  }
+  stack_overflow_task_name[configMAX_TASK_NAME_LEN - 1] = '\0';
   while (1) {
     __NOP();
   }
