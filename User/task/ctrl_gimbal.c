@@ -34,19 +34,68 @@ static Referee_GimbalUI_t gimbal_ui;
 /* Keil Watch中设为1才开启云台，上电默认无电流输出。 */
 volatile uint8_t gimbal_test_enable = 0U;
 volatile uint8_t gimbal_serial_control_active = 0U;
-volatile uint32_t gimbal_serial_last_command_tick = 0U;
 volatile float gimbal_yaw_test_origin_rad = 0.0f;
 volatile float gimbal_pit_test_origin_rad = 0.0f;
 volatile uint8_t gimbal_test_stop_reason = GIMBAL_TEST_STOP_NONE;
 volatile uint8_t gimbal_yaw_chirp_active = 0U;
 volatile uint8_t gimbal_yaw_chirp_down = 0U;
 volatile uint32_t gimbal_yaw_chirp_start_tick = 0U;
-extern volatile float gimbal_yaw_target_rad;
-extern volatile uint8_t gimbal_yaw_target_valid;
-extern volatile float gimbal_pit_target_rad;
-extern volatile uint8_t gimbal_pit_target_valid;
+
+#define GIMBAL_BINARY_TRAJECTORY_TIMEOUT_TICKS (125U) /* 250 ms at 500 Hz */
 
 /* Private function --------------------------------------------------------- */
+static void Gimbal_TargetCopyLocked(GimbalTargetInput_t *target) {
+  target->yaw_rad = gimbal_target_input.yaw_rad;
+  target->pitch_rad = gimbal_target_input.pitch_rad;
+  target->yaw_velocity_rad_s = gimbal_target_input.yaw_velocity_rad_s;
+  target->yaw_acceleration_rad_s2 =
+      gimbal_target_input.yaw_acceleration_rad_s2;
+  target->pitch_velocity_rad_s = gimbal_target_input.pitch_velocity_rad_s;
+  target->pitch_acceleration_rad_s2 =
+      gimbal_target_input.pitch_acceleration_rad_s2;
+  target->update_tick = gimbal_target_input.update_tick;
+  target->revision = gimbal_target_input.revision;
+  target->yaw_valid = gimbal_target_input.yaw_valid;
+  target->pitch_valid = gimbal_target_input.pitch_valid;
+  target->trajectory_active = gimbal_target_input.trajectory_active;
+}
+
+static uint8_t Gimbal_TargetValidate(GimbalTargetInput_t *target) {
+  if (target->yaw_valid != 0U) {
+    if (!isfinite(target->yaw_rad) || fabsf(target->yaw_rad) > 2.0f * M_2PI)
+      return 0U;
+    target->yaw_rad = fmodf(target->yaw_rad, M_2PI);
+    if (target->yaw_rad < 0.0f) target->yaw_rad += M_2PI;
+  }
+  if (target->pitch_valid != 0U &&
+      (!isfinite(target->pitch_rad) ||
+       fabsf(target->pitch_rad) > GIMBAL_PITCH_SAFE_LIMIT_RAD))
+    return 0U;
+  if (target->trajectory_active != 0U &&
+      (target->yaw_valid == 0U || target->pitch_valid == 0U ||
+       !isfinite(target->yaw_velocity_rad_s) ||
+       !isfinite(target->yaw_acceleration_rad_s2) ||
+       !isfinite(target->pitch_velocity_rad_s) ||
+       !isfinite(target->pitch_acceleration_rad_s2) ||
+       fabsf(target->yaw_velocity_rad_s) > 20.0f ||
+       fabsf(target->pitch_velocity_rad_s) > 12.0f ||
+       fabsf(target->yaw_acceleration_rad_s2) > 160.0f ||
+       fabsf(target->pitch_acceleration_rad_s2) > 120.0f))
+    return 0U;
+  return 1U;
+}
+
+static void Gimbal_TargetDisableLocked(void) {
+  gimbal_target_input.yaw_velocity_rad_s = 0.0f;
+  gimbal_target_input.yaw_acceleration_rad_s2 = 0.0f;
+  gimbal_target_input.pitch_velocity_rad_s = 0.0f;
+  gimbal_target_input.pitch_acceleration_rad_s2 = 0.0f;
+  gimbal_target_input.yaw_valid = 0U;
+  gimbal_target_input.pitch_valid = 0U;
+  gimbal_target_input.trajectory_active = 0U;
+  gimbal_target_input.revision++;
+}
+
 /* Exported functions ------------------------------------------------------- */
 
 /**
@@ -76,6 +125,7 @@ void Task_CtrlGimbal(void *argument) {
   osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
                     NULL, osWaitForever);
   uint32_t tick = osKernelGetTickCount(); /* 控制任务运行频率的计时 */
+  GimbalTargetInput_t target = {0};
   while (1) {
 #ifdef DEBUG
     /* 记录任务所使用的的栈空间 */
@@ -91,66 +141,110 @@ void Task_CtrlGimbal(void *argument) {
                       NULL, 0);
     osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
                       NULL, 0);
-    /* 任务只提交模式请求。进入 ABS 的瞬间由 Gimbal_SetMode()
-     * 锁存当前 yaw/pitch，避免任务层和模块层重复改写目标角。 */
-    /* The internal chirp is generated at the 500 Hz control rate. */
+    osKernelLock(); /* 锁住RTOS内核防止控制过程中断，造成错误 */
+    Gimbal_UpdateFeedback(&gimbal, &can);
+
+    /* Generate and publish chirp targets under the same lock as serial target
+     * writes.  The revision is committed only after the angle is complete. */
     if (gimbal_yaw_chirp_active != 0U) {
       const float elapsed =
           (float)(tick - gimbal_yaw_chirp_start_tick) /
           (float)osKernelGetTickFreq();
+      float yaw_target = gimbal_yaw_test_origin_rad;
       if (elapsed >= 20.0f) {
         gimbal_yaw_chirp_active = 0U;
-        gimbal_yaw_target_rad = gimbal_yaw_test_origin_rad;
       } else {
         const float f0 = gimbal_yaw_chirp_down != 0U ? 2.0f : 0.2f;
         const float f1 = gimbal_yaw_chirp_down != 0U ? 0.2f : 2.0f;
         const float k = (f1 - f0) / 20.0f;
-        const float phase = M_2PI * (f0 * elapsed + 0.5f * k * elapsed * elapsed);
-        float target = gimbal_yaw_test_origin_rad;
-        CircleAdd(&target, 0.08726646f * sinf(phase), M_2PI); /* 5 deg */
-        gimbal_yaw_target_rad = target;
+        const float phase =
+            M_2PI * (f0 * elapsed + 0.5f * k * elapsed * elapsed);
+        CircleAdd(&yaw_target, 0.08726646f * sinf(phase), M_2PI);
       }
-      gimbal_yaw_target_valid = 1U;
+      gimbal_target_input.yaw_rad = yaw_target;
+      gimbal_target_input.yaw_valid = 1U;
+      gimbal_target_input.update_tick = tick;
+      gimbal_target_input.revision++;
+    }
+
+    uint8_t stop_reason = GIMBAL_TEST_STOP_NONE;
+    if (target.revision != gimbal_target_input.revision) {
+      GimbalTargetInput_t candidate;
+      Gimbal_TargetCopyLocked(&candidate);
+      if (Gimbal_TargetValidate(&candidate) != 0U)
+        target = candidate;
+      else
+        stop_reason = GIMBAL_TEST_STOP_INVALID_TARGET;
     }
 
     /* Serial targets latch until replaced, explicitly stopped, or a motion
      * protection trips. Silence/USB disconnect does not release the gimbal. */
     uint8_t enable = (gimbal_test_enable != 0U) ? 1U : 0U;
-    if (enable != 0U) {
-      gimbal_cmd.mode = GIMBAL_MODE_ABSOLUTE;
-    } else {
-      gimbal_cmd.mode = GIMBAL_MODE_RELAX;
-    }
-
-    osKernelLock(); /* 锁住RTOS内核防止控制过程中断，造成错误 */
-    Gimbal_UpdateFeedback(&gimbal, &can);
+    gimbal_cmd.mode = enable != 0U ? GIMBAL_MODE_ABSOLUTE : GIMBAL_MODE_RELAX;
 
     if (enable != 0U && gimbal_serial_control_active != 0U) {
-      uint8_t stop_reason = GIMBAL_TEST_STOP_NONE;
-      if (!isfinite(gimbal.feedback.eulr.imu.yaw) ||
+      if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+          target.trajectory_active != 0U &&
+          (uint32_t)(tick - target.update_tick) >
+              GIMBAL_BINARY_TRAJECTORY_TIMEOUT_TICKS)
+        stop_reason = GIMBAL_TEST_STOP_TIMEOUT;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+          (!isfinite(gimbal.feedback.eulr.imu.yaw) ||
           !isfinite(gimbal.feedback.eulr.imu.pit) ||
           !isfinite(gimbal.feedback.gyro.y) ||
-          !isfinite(gimbal.feedback.gyro.z))
+           !isfinite(gimbal.feedback.gyro.z)))
         stop_reason = GIMBAL_TEST_STOP_INVALID_FEEDBACK;
-      else if (fabsf(gimbal.feedback.eulr.imu.pit) > GIMBAL_PITCH_SAFE_LIMIT_RAD)
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+               fabsf(gimbal.feedback.eulr.imu.pit) >
+                   GIMBAL_PITCH_SAFE_LIMIT_RAD)
         stop_reason = GIMBAL_TEST_STOP_PITCH_PROTECT;
+
+      float elapsed = 0.0f;
+      if (target.trajectory_active != 0U) {
+        elapsed = (float)(tick - target.update_tick) /
+                  (float)osKernelGetTickFreq();
+        if (elapsed < 0.0f) elapsed = 0.0f;
+        if (elapsed > 0.20f) elapsed = 0.20f;
+        const float predicted_pitch =
+            target.pitch_rad + target.pitch_velocity_rad_s * elapsed +
+            0.5f * target.pitch_acceleration_rad_s2 * elapsed * elapsed;
+        if (!isfinite(predicted_pitch) ||
+            fabsf(predicted_pitch) > GIMBAL_PITCH_SAFE_LIMIT_RAD)
+          stop_reason = GIMBAL_TEST_STOP_INVALID_TARGET;
+      }
 
       if (stop_reason != GIMBAL_TEST_STOP_NONE) {
         gimbal_test_enable = 0U;
         gimbal_serial_control_active = 0U;
         gimbal_yaw_chirp_active = 0U;
-        gimbal_yaw_target_valid = 0U;
-        gimbal_pit_target_valid = 0U;
+        Gimbal_TargetDisableLocked();
         gimbal_test_stop_reason = stop_reason;
         enable = 0U;
         gimbal_cmd.mode = GIMBAL_MODE_RELAX;
       }
     }
     if (gimbal.mode == GIMBAL_MODE_ABSOLUTE) {
-      if (gimbal_yaw_target_valid != 0U)
-        gimbal.setpoint.eulr.yaw = gimbal_yaw_target_rad;
-      if (enable != 0U && gimbal_pit_target_valid != 0U)
-        gimbal.setpoint.eulr.pit = gimbal_pit_target_rad;
+      const float elapsed = target.trajectory_active != 0U
+                                ? (float)(tick - target.update_tick) /
+                                      (float)osKernelGetTickFreq()
+                                : 0.0f;
+      if (target.yaw_valid != 0U) {
+        float yaw_target = target.yaw_rad;
+        if (target.trajectory_active != 0U) {
+          yaw_target += target.yaw_velocity_rad_s * elapsed +
+                        0.5f * target.yaw_acceleration_rad_s2 * elapsed * elapsed;
+          CircleAdd(&yaw_target, 0.0f, M_2PI);
+        }
+        gimbal.setpoint.eulr.yaw = yaw_target;
+      }
+      if (enable != 0U && target.pitch_valid != 0U) {
+        float pitch_target = target.pitch_rad;
+        if (target.trajectory_active != 0U) {
+          pitch_target += target.pitch_velocity_rad_s * elapsed +
+                          0.5f * target.pitch_acceleration_rad_s2 * elapsed * elapsed;
+        }
+        gimbal.setpoint.eulr.pit = pitch_target;
+      }
     }
     Gimbal_Control(&gimbal, &gimbal_cmd, tick);
     if (enable != 0U && gimbal_serial_control_active != 0U) {

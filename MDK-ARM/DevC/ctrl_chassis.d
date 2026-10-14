@@ -55,8 +55,8 @@ devc/ctrl_chassis.o: ../User/task/ctrl_chassis.c \
   ../User\component\ui.h D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h \
   ../User\module\config.h ../User\device\bmi088.h \
   ../User\device\ist8310.h ../User\module\gimbal.h \
-  ../User\component\ladrc.h ../User\module\shoot.h \
-  ../User\task\user_task.h \
+  ../User\component\gimbal_ff.h ../User\component\ladrc.h \
+  ../User\module\shoot.h ../User\task\user_task.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\FreeRTOS.h \
   ../Core/Inc\FreeRTOSConfig.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \

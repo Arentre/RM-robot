@@ -54,8 +54,8 @@ devc/init.o: ../User/task/init.c ../User\bsp\flash.h ../Core/Inc\main.h \
   ../User\component\ui.h ../User\module\cap.h ../User\module\chassis.h \
   ../User\component\filter.h ../User\component\mixer.h \
   ../User\component\pid.h ../User\module\gimbal.h \
-  ../User\component\ladrc.h ../User\module\shoot.h \
-  ../User\task\user_task.h \
+  ../User\component\gimbal_ff.h ../User\component\ladrc.h \
+  ../User\module\shoot.h ../User\task\user_task.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\FreeRTOS.h \
   ../Core/Inc\FreeRTOSConfig.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \

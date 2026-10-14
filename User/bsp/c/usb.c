@@ -16,6 +16,7 @@
 /* Must set to NULL explicitly. */
 osThreadId_t gbsp_usb_alert = NULL;
 uint8_t usb_rx_buf[BSP_USB_MAX_RX_LEN];
+volatile uint16_t usb_rx_len = 0U;
 uint8_t usb_tx_buf[BSP_USB_MAX_TX_LEN];
 
 /* Private function  -------------------------------------------------------- */
@@ -39,6 +40,7 @@ int8_t BSP_USB_ReadyReceive(osThreadId_t alert) {
   if (alert == NULL) return BSP_ERR_NULL;
 
   gbsp_usb_alert = alert;
+  usb_rx_len = 0U;
   return CDC_ReadyReceive() == USBD_OK ? BSP_OK : BSP_ERR_NO_DEV;
 }
 

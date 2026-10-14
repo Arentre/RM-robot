@@ -66,5 +66,5 @@ devc/cli.o: ../User/task/cli.c \
   ../User\module\chassis.h ../User\component\filter.h \
   ../User\component\mixer.h ../User\component\pid.h \
   ../User\device\referee.h ../User\component\ui.h \
-  ../User\module\gimbal.h ../User\component\ladrc.h \
-  ../User\module\shoot.h
+  ../User\module\gimbal.h ../User\component\gimbal_ff.h \
+  ../User\component\ladrc.h ../User\module\shoot.h

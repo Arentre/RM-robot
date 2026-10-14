@@ -1,4 +1,5 @@
 devc/atti_esti.o: ../User/task/atti_esti.c \
+  D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\math.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h ../User\bsp\mm.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stddef.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdint.h ../User\bsp\pwm.h \
@@ -46,7 +47,6 @@ devc/atti_esti.o: ../User/task/atti_esti.c \
   ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
   ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\float.h \
-  D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\math.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
   ../User\component\pid.h ../User\component/filter.h \
   ../User\device\bmi088.h ../User\device\device.h \
@@ -62,7 +62,7 @@ devc/atti_esti.o: ../User/task/atti_esti.c \
   ../User\bsp\can.h ../Core/Inc\can.h ../Core/Inc/main.h \
   ../User\module\chassis.h ../User\component\mixer.h \
   ../User\device\referee.h ../User\component\ui.h \
-  ../User\module\gimbal.h ../User\component\ladrc.h \
-  ../User\module\shoot.h \
+  ../User\module\gimbal.h ../User\component\gimbal_ff.h \
+  ../User\component\ladrc.h ../User\module\shoot.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\task.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

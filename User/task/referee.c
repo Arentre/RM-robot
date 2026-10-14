@@ -31,6 +31,7 @@ static Referee_ForAI_t for_ai;
 static Referee_ForChassis_t for_chassis;
 static Referee_ForShoot_t for_shoot;
 #endif
+volatile float gimbal_referee_bullet_speed_mps = 0.0f;
 
 /* Private function --------------------------------------------------------- */
 /* Exported functions ------------------------------------------------------- */
@@ -70,6 +71,8 @@ void Task_Referee(void *argument) {
     Referee_PackCap(&for_cap, &ref);
     Referee_PackAI(&for_ai, &ref);
     Referee_PackShoot(&for_shoot, &ref);
+    gimbal_referee_bullet_speed_mps =
+        ref.ref_status == REF_STATUS_RUNNING ? ref.shoot_data.bullet_speed : 0.0f;
     Referee_PackChassis(&for_chassis, &ref);
     if (osKernelGetTickCount() > delay_tick) {
       tick += delay_tick;

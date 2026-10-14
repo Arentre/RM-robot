@@ -1,4 +1,5 @@
-devc/ctrl_gimbal.o: ../User/task/ctrl_gimbal.c ../User\module\gimbal.h \
+devc/ctrl_gimbal.o: ../User/task/ctrl_gimbal.c \
+  D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\math.h ../User\module\gimbal.h \
   ../User\component\ahrs.h ../User\component/user_math.h \
   ../Drivers/CMSIS/Device/ST/STM32F4xx/Include\stm32f4xx.h \
   ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h \
@@ -43,11 +44,11 @@ devc/ctrl_gimbal.o: ../User/task/ctrl_gimbal.c ../User\module\gimbal.h \
   ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_usb.h \
   ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pcd_ex.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\float.h \
-  D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\math.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
   ../User\component\cmd.h ../User\component\filter.h \
-  ../User\component\ladrc.h ../User\component\pid.h \
-  ../User\device\bmi088.h ../User\device\device.h ../User\device\can.h \
+  ../User\component\gimbal_ff.h ../User\component\ladrc.h \
+  ../User\component\pid.h ../User\device\bmi088.h \
+  ../User\device\device.h ../User\device\can.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2\cmsis_os2.h \
   ../User\bsp\can.h ../Core/Inc\can.h ../Core/Inc/main.h \
   ../User\bsp/bsp.h ../User\device\referee.h ../User\component\ui.h \

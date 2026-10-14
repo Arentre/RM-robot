@@ -57,6 +57,7 @@ typedef enum {
   GIMBAL_TEST_STOP_INVALID_FEEDBACK = 5,
   GIMBAL_TEST_STOP_PITCH_PROTECT = 6,
   GIMBAL_TEST_STOP_PITCH_TRAVEL = 7, /* Reserved legacy code; no travel stop. */
+  GIMBAL_TEST_STOP_INVALID_TARGET = 8,
 } Gimbal_TestStopReason_e;
 
 /* 云台参数的结构体，包含所有初始化用的参数，通常是const，存好几组。*/

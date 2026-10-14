@@ -63,6 +63,7 @@ devc/cap_1.o: ../User/task/cap.c ../User\module\cap.h \
   ../User\device\ist8310.h ../User\module\chassis.h \
   ../User\component\filter.h ../User\component\mixer.h \
   ../User\component\pid.h ../User\module\gimbal.h \
-  ../User\component\ladrc.h ../User\module\shoot.h \
+  ../User\component\gimbal_ff.h ../User\component\ladrc.h \
+  ../User\module\shoot.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\task.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

@@ -34,6 +34,24 @@ extern "C" {
 /* Exported macro ----------------------------------------------------------- */
 /* Exported types ----------------------------------------------------------- */
 
+/* Serial/vision gimbal commands are published as one protected snapshot.
+ * Writers update every related field under the RTOS kernel lock, then bump
+ * revision.  The 500 Hz control task accepts only complete, validated
+ * revisions. */
+typedef struct {
+  float yaw_rad;
+  float pitch_rad;
+  float yaw_velocity_rad_s;
+  float yaw_acceleration_rad_s2;
+  float pitch_velocity_rad_s;
+  float pitch_acceleration_rad_s2;
+  uint32_t update_tick;
+  uint32_t revision;
+  uint8_t yaw_valid;
+  uint8_t pitch_valid;
+  uint8_t trajectory_active;
+} GimbalTargetInput_t;
+
 typedef struct {
   /* 各任务，也可以叫做线程 */
   struct {
@@ -177,6 +195,9 @@ typedef struct {
 } Task_Runtime_t;
 
 extern Task_Runtime_t task_runtime;
+extern volatile float gimbal_imu_temperature_c;
+extern volatile GimbalTargetInput_t gimbal_target_input;
+extern volatile float gimbal_referee_bullet_speed_mps;
 
 extern const osThreadAttr_t attr_init;
 

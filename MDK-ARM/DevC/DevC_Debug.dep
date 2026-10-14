@@ -116,7 +116,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_uart.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
-F (../Core/Src/freertos.c)(0x6AAB7CB7)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/freertos.o -MD)
+F (../Core/Src/freertos.c)(0x6AC5F6A2)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/freertos.o -MD)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
@@ -172,7 +172,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\Core\Inc\tim.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\User\module\config.h)(0x698247C0)
 I (..\User\component\cmd.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
@@ -182,7 +182,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
@@ -194,8 +194,9 @@ I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 F (../Core/Src/adc.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/adc.o -MD)
 I (..\Core\Inc\adc.h)(0x698247C0)
@@ -759,7 +760,7 @@ I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_ctlreq.h)(0x698247C0
 I (..\USB_DEVICE\App\usbd_desc.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Class\CDC\Inc\usbd_cdc.h)(0x698247C0)
 I (..\USB_DEVICE\App\usbd_cdc_if.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
 F (../USB_DEVICE/App/usbd_desc.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/usbd_desc.o -MD)
@@ -815,7 +816,7 @@ I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_def.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_ioreq.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_ctlreq.h)(0x698247C0)
 I (..\USB_DEVICE\App\usbd_desc.h)(0x698247C0)
-F (../USB_DEVICE/App/usbd_cdc_if.c)(0x6AAFA2DE)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/usbd_cdc_if.o -MD)
+F (../USB_DEVICE/App/usbd_cdc_if.c)(0x6ACEF269)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/usbd_cdc_if.o -MD)
 I (..\USB_DEVICE\App\usbd_cdc_if.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Class\CDC\Inc\usbd_cdc.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_ioreq.h)(0x698247C0)
@@ -869,7 +870,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_core.h)(0x698247C0)
 I (..\Middlewares\ST\STM32_USB_Device_Library\Core\Inc\usbd_ctlreq.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
 F (../USB_DEVICE/Target/usbd_conf.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -w -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/usbd_conf.o -MD)
@@ -3290,8 +3291,8 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
-F (..\User\bsp\c\usb.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/usb.o -MD)
-I (..\User\bsp\usb.h)(0x698247C0)
+F (..\User\bsp\c\usb.c)(0x6ACEF69A)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/usb.o -MD)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
@@ -3496,7 +3497,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
-F (..\User\component\cmd.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/cmd.o -MD)
+F (..\User\component\cmd.c)(0x6ACC53B1)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/cmd.o -MD)
 I (..\User\component\cmd.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
@@ -3757,11 +3758,17 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
-F (..\User\component\ladrc.c)(0x6AB25E73)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/ladrc.o -MD)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+F (..\User\component\ladrc.c)(0x6ACB7BD5)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/ladrc.o -MD)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
+I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
+F (..\User\component\gimbal_ff.c)(0x6ACA2CB9)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/gimbal_ff.o -MD)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
+I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
+I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
 F (..\User\component\user_math.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/user_math.o -MD)
 I (..\User\component\user_math.h)(0x698247C0)
 I (..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x698247C0)
@@ -3874,7 +3881,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x588CAFD2)
-F (..\User\device\bmi088.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/bmi088.o -MD)
+F (..\User\device\bmi088.c)(0x6ACC4810)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/bmi088.o -MD)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
@@ -3933,8 +3940,8 @@ I (..\User\bsp\bsp.h)(0x698247C0)
 I (..\User\bsp\gpio.h)(0x698247C0)
 I (..\User\bsp\spi.h)(0x698247C0)
 I (..\Core\Inc\spi.h)(0x698247C0)
-F (..\User\device\can.c)(0x6AAB8462)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/can_2.o -MD)
-I (..\User\device\can.h)(0x6AABACCA)
+F (..\User\device\can.c)(0x6AC2EE51)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/can_2.o -MD)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
@@ -4162,7 +4169,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -4229,7 +4236,7 @@ I (..\User\device\device.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -4242,7 +4249,7 @@ I (..\User\component\crc16.h)(0x698247C0)
 I (..\User\component\crc8.h)(0x698247C0)
 F (..\User\module\cap.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/cap.o -MD)
 I (..\User\module\cap.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
@@ -4355,7 +4362,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
@@ -4421,7 +4428,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
@@ -4435,12 +4442,13 @@ I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\User\bsp\flash.h)(0x698247C0)
-F (..\User\module\gimbal.c)(0x6AB25E73)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/gimbal.o -MD)
-I (..\User\module\gimbal.h)(0x6AB2517A)
+F (..\User\module\gimbal.c)(0x6ACF0D45)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/gimbal.o -MD)
+I (..\User\module\gimbal.h)(0x6ACF0626)
 I (..\User\component\ahrs.h)(0x698247C0)
 I (..\User\component\user_math.h)(0x698247C0)
 I (..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x698247C0)
@@ -4490,11 +4498,12 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
@@ -4557,7 +4566,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -4568,7 +4577,7 @@ I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
 I (..\User\bsp\pwm.h)(0x698247C0)
 I (..\User\component\limiter.h)(0x698247C0)
-F (..\User\task\ai.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/ai_1.o -MD)
+F (..\User\task\ai.c)(0x6ACC5383)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/ai_1.o -MD)
 I (..\User\device\ai.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
@@ -4624,14 +4633,14 @@ I (..\User\device\device.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
 I (..\Middlewares\Third_Party\Protocol\protocol.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\bsp\usb.h)(0x6ACEF269)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -4645,19 +4654,21 @@ I (..\User\device\ist8310.h)(0x698247C0)
 I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
-F (..\User\task\atti_esti.c)(0x69C68A28)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/atti_esti.o -MD)
+F (..\User\task\atti_esti.c)(0x6ACC4789)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/atti_esti.o -MD)
+I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
 I (..\User\bsp\mm.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (..\User\bsp\pwm.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\component\ahrs.h)(0x698247C0)
 I (..\User\component\user_math.h)(0x698247C0)
@@ -4702,14 +4713,13 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
-I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
 I (..\User\device\ist8310.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -4719,7 +4729,7 @@ I (..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM4F\portmacro.h
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\mpu_wrappers.h)(0x698247C0)
 I (..\User\module\config.h)(0x698247C0)
 I (..\User\component\cmd.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -4727,13 +4737,14 @@ I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
 F (..\User\task\can.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/can_3.o -MD)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
@@ -4791,7 +4802,7 @@ I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -4806,14 +4817,15 @@ I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
 F (..\User\task\cap.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/cap_1.o -MD)
 I (..\User\module\cap.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
@@ -4871,7 +4883,7 @@ I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -4886,8 +4898,9 @@ I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
@@ -4948,12 +4961,12 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\component\FreeRTOS_CLI.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\User\module\config.h)(0x698247C0)
 I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\ahrs.h)(0x698247C0)
@@ -4962,7 +4975,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\device\ist8310.h)(0x698247C0)
 I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
@@ -4970,10 +4983,11 @@ I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
-F (..\User\task\command.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/command.o -MD)
+F (..\User\task\command.c)(0x6ACC5384)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/command.o -MD)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
 I (..\User\device\dr16.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
@@ -5026,7 +5040,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5036,7 +5050,7 @@ I (..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM4F\portmacro.h
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\mpu_wrappers.h)(0x698247C0)
 I (..\User\module\config.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -5048,8 +5062,9 @@ I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
@@ -5107,7 +5122,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
@@ -5120,10 +5135,11 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
 I (..\User\module\config.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\ist8310.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5133,8 +5149,9 @@ I (..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM4F\portmacro.h
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\mpu_wrappers.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
-F (..\User\task\ctrl_gimbal.c)(0x6AB2517B)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/ctrl_gimbal.o -MD)
-I (..\User\module\gimbal.h)(0x6AB2517A)
+F (..\User\task\ctrl_gimbal.c)(0x6ACF060D)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/ctrl_gimbal.o -MD)
+I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
+I (..\User\module\gimbal.h)(0x6ACF0626)
 I (..\User\component\ahrs.h)(0x698247C0)
 I (..\User\component\user_math.h)(0x698247C0)
 I (..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x698247C0)
@@ -5180,15 +5197,15 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
-I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
@@ -5197,7 +5214,7 @@ I (..\User\bsp\bsp.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5265,7 +5282,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -5274,7 +5291,7 @@ I (..\User\device\device.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5287,21 +5304,22 @@ I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\ist8310.h)(0x698247C0)
 I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
-F (..\User\task\info.c)(0x6AB25198)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/info.o -MD)
+F (..\User\task\info.c)(0x6AD00521)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/info.o -MD)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdlib.h)(0x588CAFDA)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
 I (..\User\bsp\bsp.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ahrs.h)(0x698247C0)
+I (..\User\component\crc16.h)(0x698247C0)
+I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
 I (..\User\component\user_math.h)(0x698247C0)
 I (..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x698247C0)
 I (..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f407xx.h)(0x698247C0)
@@ -5344,20 +5362,22 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
-I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\ahrs.h)(0x698247C0)
 I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5418,7 +5438,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x698247C0)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
 I (..\User\component\cmd.h)(0x698247C0)
@@ -5429,7 +5449,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\User\device\ist8310.h)(0x698247C0)
@@ -5440,10 +5460,11 @@ I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5460,7 +5481,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (..\User\bsp\bsp.h)(0x698247C0)
 I (..\User\bsp\buzzer.h)(0x698247C0)
 I (..\User\bsp\led.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
+I (..\User\bsp\usb.h)(0x6ACEF269)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
@@ -5509,7 +5530,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x588CAFD2)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5522,7 +5543,7 @@ I (..\User\component\cmd.h)(0x698247C0)
 I (..\User\component\ahrs.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -5533,8 +5554,9 @@ I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
@@ -5591,7 +5613,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5601,7 +5623,7 @@ I (..\Middlewares\Third_Party\FreeRTOS\Source\portable\RVDS\ARM_CM4F\portmacro.h
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\mpu_wrappers.h)(0x698247C0)
 I (..\User\module\config.h)(0x698247C0)
 I (..\User\device\bmi088.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -5613,12 +5635,13 @@ I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
-F (..\User\task\referee.c)(0x698247C0)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/referee_1.o -MD)
+F (..\User\task\referee.c)(0x6AD005A6)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/referee_1.o -MD)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
@@ -5671,14 +5694,14 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
 I (..\User\bsp\bsp.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\bsp\usb.h)(0x698247C0)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+I (..\User\bsp\usb.h)(0x6ACEF269)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h)(0x698247C0)
 I (..\Core\Inc\FreeRTOSConfig.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h)(0x698247C0)
@@ -5693,13 +5716,14 @@ I (..\User\module\chassis.h)(0x698247C0)
 I (..\User\component\filter.h)(0x698247C0)
 I (..\User\component\mixer.h)(0x698247C0)
 I (..\User\component\pid.h)(0x698247C0)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)
-F (..\User\task\user_task.c)(0x6AABDAC6)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/user_task.o -MD)
-I (..\User\task\user_task.h)(0x6AABDDFF)
+F (..\User\task\user_task.c)(0x6ACB7D25)(-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-3 -O0 -ffunction-sections -I ../Core/Inc -I ../USB_DEVICE/App -I ../USB_DEVICE/Target -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc -I ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Drivers/CMSIS/DSP/Include -I ../User -I ../Middlewares/Third_Party/Protocol-I./RTE/_Debug-ID:/Keil_v5/ARM/PACK/Keil/STM32F4xx_DFP/1.0.8/Device/Include-ID:/Keil_v5/ARM/CMSIS/Include-D__UVISION_VERSION="524" -DSTM32F40_41xxx -DUSE_HAL_DRIVER -DDEV_BOARD_C -DSTM32F407xx -DDEBUG-o devc/user_task.o -MD)
+I (..\User\task\user_task.h)(0x6AD002B6)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x588CAFD2)
@@ -5759,7 +5783,7 @@ I (D:\Keil_v5\ARM\ARMCLANG\include\float.h)(0x588CAFD2)
 I (D:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x58A47FFE)
 I (..\User\device\bmi088.h)(0x698247C0)
 I (..\User\device\device.h)(0x698247C0)
-I (..\User\device\can.h)(0x6AABACCA)
+I (..\User\device\can.h)(0x6AC2F375)
 I (..\User\bsp\can.h)(0x698247C0)
 I (..\Core\Inc\can.h)(0x698247C0)
 I (..\Core\Inc\main.h)(0x698247C0)
@@ -5772,8 +5796,9 @@ I (..\User\component\pid.h)(0x698247C0)
 I (..\User\device\referee.h)(0x698247C0)
 I (..\User\component\ui.h)(0x698247C0)
 I (D:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x588CAFD2)
-I (..\User\module\gimbal.h)(0x6AB2517A)
-I (..\User\component\ladrc.h)(0x6AB25E72)
+I (..\User\module\gimbal.h)(0x6ACF0626)
+I (..\User\component\gimbal_ff.h)(0x6ACA2CB8)
+I (..\User\component\ladrc.h)(0x6ACB7BD4)
 I (..\User\module\shoot.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h)(0x698247C0)
 I (..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h)(0x698247C0)

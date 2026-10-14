@@ -267,6 +267,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   /* USER CODE BEGIN 6 */
 	/* USB CDC packets are at most 64 bytes; the application buffer is 128 bytes. */
 	if (*Len < BSP_USB_MAX_RX_LEN) Buf[*Len] = '\0';
+	usb_rx_len = (uint16_t)(*Len <= BSP_USB_MAX_RX_LEN ? *Len : BSP_USB_MAX_RX_LEN);
 	if (gbsp_usb_alert != NULL)
 		osThreadFlagsSet(gbsp_usb_alert, SIGNAL_BSP_USB_BUF_RECV);
 

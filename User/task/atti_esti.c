@@ -8,6 +8,7 @@
 */
 
 /* Includes ----------------------------------------------------------------- */
+#include <math.h>
 #include <string.h>
 
 #include "bsp\mm.h"
@@ -41,21 +42,9 @@ static AHRS_Eulr_t eulr_to_send;
 
 static KPID_t imu_temp_ctrl_pid;
 #endif
-// typedef struct {
-//   struct {
-//     float x;
-//     float y;
-//     float z;
-//   } gyro_offset; /* 陀螺仪偏置 */
-// } BMI088_Cali_t; /* BMI088校准数据 */
 
-static const BMI088_Cali_t bmi088_cali= {
-  .gyro_offset = {
-    .x = 0.0f,
-    .y = 0.0f,
-    .z = 0.0f,
-  },
-};
+volatile float gimbal_imu_temperature_c = 0.0f;
+
 static const KPID_Params_t imu_temp_ctrl_pid_param = {
     .k = 0.15f,
     .p = 1.0f,
@@ -77,8 +66,21 @@ void Task_AttiEsti(void *argument) {
   (void)argument; /* 未使用argument，消除警告 */
 
   /* 初始化设备 */
-  // BMI088_Init(&bmi088, &(task_runtime.cfg.cali.bmi088));
-    BMI088_Init(&bmi088, &bmi088_cali);
+  /* Use the offset stored by GCAL. An erased/corrupt Flash value must never
+   * enter the control loop; a valid static offset is comfortably below
+   * 10 deg/s on BMI088. */
+  BMI088_Cali_t *const cali = &task_runtime.cfg.cali.bmi088;
+  const float max_offset = 10.0f * M_DEG2RAD_MULT;
+  if (!isfinite(cali->gyro_offset.x) ||
+      fabsf(cali->gyro_offset.x) > max_offset)
+    cali->gyro_offset.x = 0.0f;
+  if (!isfinite(cali->gyro_offset.y) ||
+      fabsf(cali->gyro_offset.y) > max_offset)
+    cali->gyro_offset.y = 0.0f;
+  if (!isfinite(cali->gyro_offset.z) ||
+      fabsf(cali->gyro_offset.z) > max_offset)
+    cali->gyro_offset.z = 0.0f;
+  BMI088_Init(&bmi088, cali);
   // IST8310_Init(&ist8310, &(task_runtime.cfg.cali.ist8310));
 
   /* 读取一次磁力计数据，用以初始化姿态解算算法 */
@@ -127,6 +129,7 @@ void Task_AttiEsti(void *argument) {
     /* 接收完所有数据后，把数据从原始字节加工成方便计算的数据 */
     BMI088_ParseAccl(&bmi088);
     BMI088_ParseGyro(&bmi088);
+    gimbal_imu_temperature_c = bmi088.temp;
     // IST8310_Parse(&ist8310);
 
     /* 根据设备接收到的数据进行姿态解析 */

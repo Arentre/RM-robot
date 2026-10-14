@@ -63,6 +63,6 @@ devc/ctrl_shoot.o: ../User/task/ctrl_shoot.c ../User\module\shoot.h \
   ../User\module\config.h ../User\device\bmi088.h \
   ../User\device\ist8310.h ../User\module\chassis.h \
   ../User\component\mixer.h ../User\module\gimbal.h \
-  ../User\component\ladrc.h \
+  ../User\component\gimbal_ff.h ../User\component\ladrc.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\task.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

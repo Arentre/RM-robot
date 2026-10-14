@@ -64,5 +64,5 @@ devc/freertos.o: ../Core/Src/freertos.c \
   ../User\component\mixer.h ../User\component\pid.h \
   ../User\device\referee.h ../User\component\ui.h \
   D:\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h \
-  ../User\module\gimbal.h ../User\component\ladrc.h \
-  ../User\module\shoot.h
+  ../User\module\gimbal.h ../User\component\gimbal_ff.h \
+  ../User\component\ladrc.h ../User\module\shoot.h

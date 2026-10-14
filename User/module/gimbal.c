@@ -22,7 +22,7 @@ volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
     .r = 10.0f, .b0 = 500.0f, .wc = 12.0f, .w0 = 40.0f,
     .out_limit = 0.30f, .deadband_rad = 0.00349066f}; /* 0.2 deg */
 volatile LADRC_Params_t gimbal_ladrc_pit_param = {
-    .r = 10.0f, .b0 = 500.0f, .wc = 8.0f, .w0 = 30.0f,
+    .r = 13.0f, .b0 = 550.0f, .wc = 7.0f, .w0 = 22.0f,
     .out_limit = 0.3f, .deadband_rad = 0.00523599f}; /* 0.3 deg */
 volatile uint8_t gimbal_yaw_dither_enable = 1U;
 volatile float gimbal_yaw_dither_amplitude = 0.008f;
@@ -121,8 +121,9 @@ static int8_t Gimbal_SetMode(Gimbal_t *g, CMD_GimbalMode_t mode) {
     LowPassFilter2p_Reset(g->filter_out + i, 0.0f);
   }
 
-  AHRS_ResetEulr(&(g->setpoint.eulr)); /* 切换模式后重置设定值 */
-  /* Every transition into absolute mode holds the attitude at that instant. */
+  /* Entering absolute mode starts from the current attitude.  Keep the last
+   * setpoint while relaxed so STOP cannot appear as an unsolicited 0/360 deg
+   * target jump in telemetry. */
   if (mode == GIMBAL_MODE_ABSOLUTE) {
     g->setpoint.eulr.yaw = g->feedback.eulr.imu.yaw;
     g->setpoint.eulr.pit = g->feedback.eulr.imu.pit;

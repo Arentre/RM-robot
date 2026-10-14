@@ -91,6 +91,7 @@
 "devc\mixer.o"
 "devc\pid.o"
 "devc\ladrc.o"
+"devc\gimbal_ff.o"
 "devc\user_math.o"
 "devc\freertos_cli.o"
 "devc\ui.o"
