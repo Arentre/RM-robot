@@ -64,6 +64,8 @@
 #define BMI088_CHIP_ID_GYRO (0x0F)
 
 #define BMI088_LEN_RX_BUFF (19)
+#define BMI088_GYRO_UPDATE_FREQ_HZ (1000.0f)
+#define BMI088_ACCL_UPDATE_FREQ_HZ (800.0f)
 /* Private macro ------------------------------------------------------------ */
 #define BMI088_ACCL_NSS_SET() \
   HAL_GPIO_WritePin(ACCL_CS_GPIO_Port, ACCL_CS_Pin, GPIO_PIN_SET)
@@ -87,6 +89,27 @@ static uint8_t bmi088_rxbuf[BMI088_LEN_RX_BUFF];
 
 static osThreadId_t thread_alert;
 static bool inited = false;
+
+/* Sensor-to-gimbal mounting transform. Keep calibration offsets in the
+ * transformed coordinate system so every consumer sees the same axes. */
+static const float bmi088_install_rotation[3][3] = {
+    {1.0f, 0.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 0.0f, 1.0f},
+};
+
+static void BMI088_Rotate(float *x, float *y, float *z) {
+  const float sensor[3] = {*x, *y, *z};
+  *x = bmi088_install_rotation[0][0] * sensor[0] +
+       bmi088_install_rotation[0][1] * sensor[1] +
+       bmi088_install_rotation[0][2] * sensor[2];
+  *y = bmi088_install_rotation[1][0] * sensor[0] +
+       bmi088_install_rotation[1][1] * sensor[1] +
+       bmi088_install_rotation[1][2] * sensor[2];
+  *z = bmi088_install_rotation[2][0] * sensor[0] +
+       bmi088_install_rotation[2][1] * sensor[1] +
+       bmi088_install_rotation[2][2] * sensor[2];
+}
 
 /* Private function  -------------------------------------------------------- */
 static void BMI_WriteSingle(BMI_Device_t dv, uint8_t reg, uint8_t data) {
@@ -211,8 +234,8 @@ int8_t BMI088_Init(BMI088_t *bmi088, const BMI088_Cali_t *cali) {
 
   /* Accl init. */
   /* Filter setting: Normal. */
-  /* ODR: 0xAB: 800Hz. 0xAA: 400Hz. 0xA9: 200Hz. 0xA8: 100Hz. 0xA6: 25Hz. */
-  BMI_WriteSingle(BMI_ACCL, BMI088_REG_ACCL_CONF, 0xAA);
+  /* Normal bandwidth, 800 Hz output data rate. */
+  BMI_WriteSingle(BMI_ACCL, BMI088_REG_ACCL_CONF, 0xAB);
 
   /* 0x00: +-3G. 0x01: +-6G. 0x02: +-12G. 0x03: +-24G. */
   BMI_WriteSingle(BMI_ACCL, BMI088_REG_ACCL_RANGE, 0x01);
@@ -231,9 +254,8 @@ int8_t BMI088_Init(BMI088_t *bmi088, const BMI088_Cali_t *cali) {
   /* 0x00: +-2000. 0x01: +-1000. 0x02: +-500. 0x03: +-250. 0x04: +-125. */
   BMI_WriteSingle(BMI_GYRO, BMI088_REG_GYRO_RANGE, 0x01);
 
-  /* Filter bw: 47Hz. */
-  /* ODR: 0x02: 1000Hz. 0x03: 400Hz. 0x06: 200Hz. 0x07: 100Hz. */
-  BMI_WriteSingle(BMI_GYRO, BMI088_REG_GYRO_BANDWIDTH, 0x03);
+  /* 1000 Hz output data rate, 116 Hz bandwidth. */
+  BMI_WriteSingle(BMI_GYRO, BMI088_REG_GYRO_BANDWIDTH, 0x02);
 
   /* INT3 and INT4 as output. Push-pull. Active low. */
   BMI_WriteSingle(BMI_GYRO, BMI088_REG_GYRO_INT3_INT4_IO_CONF, 0x00);
@@ -261,7 +283,7 @@ bool BMI088_GyroStable(AHRS_Gyro_t *gyro) {
 
 uint32_t BMI088_WaitNew() {
   return osThreadFlagsWait(
-      SIGNAL_BMI088_ACCL_NEW_DATA | SIGNAL_BMI088_GYRO_NEW_DATA, osFlagsWaitAll,
+      SIGNAL_BMI088_ACCL_NEW_DATA | SIGNAL_BMI088_GYRO_NEW_DATA, osFlagsWaitAny,
       osWaitForever);
 }
 
@@ -313,6 +335,7 @@ int8_t BMI088_ParseAccl(BMI088_t *bmi088) {
   bmi088->accl.x /= 5460.0f;
   bmi088->accl.y /= 5460.0f;
   bmi088->accl.z /= 5460.0f;
+  BMI088_Rotate(&bmi088->accl.x, &bmi088->accl.y, &bmi088->accl.z);
 
   int16_t raw_temp =
       (uint16_t)((bmi088_rxbuf[17] << 3) | (bmi088_rxbuf[18] >> 5));
@@ -359,6 +382,8 @@ int8_t BMI088_ParseGyro(BMI088_t *bmi088) {
   bmi088->gyro.y *= M_DEG2RAD_MULT;
   bmi088->gyro.z *= M_DEG2RAD_MULT;
 
+  BMI088_Rotate(&bmi088->gyro.x, &bmi088->gyro.y, &bmi088->gyro.z);
+
   bmi088->gyro.x -= bmi088->cali->gyro_offset.x;
   bmi088->gyro.y -= bmi088->cali->gyro_offset.y;
   bmi088->gyro.z -= bmi088->cali->gyro_offset.z;
@@ -368,5 +393,10 @@ int8_t BMI088_ParseGyro(BMI088_t *bmi088) {
 
 float BMI088_GetUpdateFreq(BMI088_t *bmi088) {
   (void)bmi088;
-  return 400.0f;
+  return BMI088_GYRO_UPDATE_FREQ_HZ;
+}
+
+float BMI088_GetAcclUpdateFreq(BMI088_t *bmi088) {
+  (void)bmi088;
+  return BMI088_ACCL_UPDATE_FREQ_HZ;
 }

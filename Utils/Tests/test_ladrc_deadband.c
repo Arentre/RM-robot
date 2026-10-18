@@ -26,9 +26,12 @@ static void check_axis(float tolerance_deg, float wc, float w0) {
   for (int i = 0; i < 10000; ++i) {
     const float feedback = tolerance_deg * DEG_RAD * 0.5f * sinf(i * 0.37f);
     const float rate = 0.4f * DEG_RAD * cosf(i * 0.29f);
-    assert(LADRC_Update(&ctrl, 0.0f, feedback, rate) == 0.0f);
-    assert(ctrl.deadband_active != 0U);
-    assert(ctrl.z3 == 0.0f);
+    const float output = LADRC_Update(&ctrl, 0.0f, feedback, rate);
+    if (i >= 10) {
+      assert(output == 0.0f);
+      assert(ctrl.deadband_active != 0U);
+      assert(ctrl.z3 == 0.0f);
+    }
   }
 
   /* Hysteresis avoids chatter just outside the entry tolerance. */
@@ -38,8 +41,28 @@ static void check_axis(float tolerance_deg, float wc, float w0) {
   assert(ctrl.deadband_active == 0U);
   LADRC_Update(&ctrl, 0.0f, tolerance_deg * DEG_RAD * 1.2f, 0.0f);
   assert(ctrl.deadband_active == 0U);
-  assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f) == 0.0f);
+  for (int i = 0; i < 10; ++i)
+    LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
   assert(ctrl.deadband_active != 0U);
+
+  /* Angle alone is insufficient: low speed must remain stable for 20 ms. */
+  LADRC_Reset(&ctrl, 0.0f, 0.0f);
+  for (int i = 0; i < 8; ++i)
+    LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
+  LADRC_Update(&ctrl, 0.0f, 0.0f, 2.1f * DEG_RAD);
+  assert(ctrl.deadband_active == 0U);
+  for (int i = 0; i < 9; ++i) {
+    LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
+    assert(ctrl.deadband_active == 0U);
+  }
+  LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
+  assert(ctrl.deadband_active != 0U);
+
+  /* Rate hysteresis holds at 2.5 deg/s and exits immediately above 3 deg/s. */
+  assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 2.5f * DEG_RAD) == 0.0f);
+  assert(ctrl.deadband_active != 0U);
+  assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 3.1f * DEG_RAD) < 0.0f);
+  assert(ctrl.deadband_active == 0U);
 
   /* Do not remove braking while passing through the target at speed. */
   assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 3.0f * DEG_RAD) < 0.0f);

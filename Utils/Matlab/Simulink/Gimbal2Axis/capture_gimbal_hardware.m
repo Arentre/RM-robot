@@ -27,7 +27,10 @@ names = {'HostTime_s','YawTarget_deg','YawFeedback_deg', ...
     'YawActualCurrent_A','PitchActualCurrent_A','YawTemp_C','PitchTemp_C', ...
     'StopReason','YawOrigin_deg','YawTravel_deg','YawFrictionFF', ...
     'GyroX_deg_s','GyroY_deg_s','GyroZ_deg_s', ...
-    'AccelX_g','AccelY_g','AccelZ_g'};
+    'AccelX_g','AccelY_g','AccelZ_g','RollFeedback_deg', ...
+    'BulletSpeed_m_s','CanTxAge_ms','CanTxFailureCount', ...
+    'YawCurrentMismatch_ms','PitchCurrentMismatch_ms'};
+validFieldCounts = [26 34 35 41 43 47];
 samples = zeros(max(1, ceil(duration_s*55)), numel(names));
 n = 0;
 t0 = tic;
@@ -45,9 +48,9 @@ while toc(t0) < duration_s
     end
     if ~startsWith(line, 'yaw:'), continue; end
     values = str2double(split(extractAfter(line, 4), ','));
-    if ~(numel(values) == 26 || numel(values) == 34 || ...
-            numel(values) == 35 || numel(values) == 41) || ...
-            any(~isfinite(values)), continue; end
+    if ~ismember(numel(values), validFieldCounts) || any(~isfinite(values))
+        continue
+    end
     if numel(values) == 26
         values(27:35,1) = NaN; % compatibility with firmware before bench protocol
     elseif numel(values) == 34
@@ -55,6 +58,12 @@ while toc(t0) < duration_s
     end
     if numel(values) == 35
         values(36:41,1) = NaN; % compatibility with firmware before raw IMU fields
+    end
+    if numel(values) == 41
+        values(42:43,1) = NaN; % compatibility with firmware before roll/speed
+    end
+    if numel(values) == 43
+        values(44:47,1) = NaN; % compatibility before CAN/current diagnostics
     end
     n = n + 1;
     if n > size(samples, 1), samples(end+100, :) = 0; end %#ok<AGROW>

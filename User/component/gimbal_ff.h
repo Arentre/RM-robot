@@ -29,6 +29,7 @@ extern volatile GimbalFrictionComp_t gimbal_pitch_friction;
 extern volatile GimbalGravityComp_t gimbal_pitch_gravity;
 
 void GimbalFriction_Reset(volatile GimbalFrictionComp_t *comp);
+float GimbalFriction_Release(volatile GimbalFrictionComp_t *comp, float dt);
 float GimbalFriction_Update(volatile GimbalFrictionComp_t *comp,
                             float angle_error, float angular_speed, float dt);
 void GimbalGravity_Reset(volatile GimbalGravityComp_t *comp);

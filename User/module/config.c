@@ -20,16 +20,16 @@ static const Config_RobotParam_t param_default = {
   .model = ROBOT_MODEL_INFANTRY,
 
   .chassis = { /* 底盘模块参数 */
-    .type = CHASSIS_TYPE_MECANUM,
+    .type = CHASSIS_TYPE_OMNI_CROSS,
 
     .motor_pid_param = {
-      .k = 0.001f,
+      .k = 0.01f / CHASSIS_M3508_GEAR_RATIO,
       .p = 1.0f,
       .i = 0.0f,
       .d = 0.0f,
-      .i_limit = 1.0f,
-      .out_limit = 1.0f,
-      .d_cutoff_freq = -1.0f,
+      .i_limit = 20.0f,
+      .out_limit = 4.0f / CAN_M3508_MAX_ABS_CUR,
+      .d_cutoff_freq = 20.0f,
       .range = -1.0f,
     },
 
@@ -45,7 +45,7 @@ static const Config_RobotParam_t param_default = {
     },
 
     .low_pass_cutoff_freq = {
-      .in = -1.0f,
+      .in = 45.0f,
       .out = -1.0f,
     },
 		
@@ -207,16 +207,16 @@ static const Config_RobotParam_t param_hero = {
   .model = ROBOT_MODEL_HERO,
 
   .chassis = { /* 底盘模块参数 */
-    .type = CHASSIS_TYPE_MECANUM,
+    .type = CHASSIS_TYPE_OMNI_CROSS,
 
     .motor_pid_param = {
-      .k = 0.0011f,
+      .k = 0.01f / CHASSIS_M3508_GEAR_RATIO,
       .p = 1.0f,
-      .i = 0.001f,
+      .i = 0.0f,
       .d = 0.0f,
-      .i_limit = 1.0f,
-      .out_limit = 1.0f,
-      .d_cutoff_freq = -1.0f,
+      .i_limit = 20.0f,
+      .out_limit = 4.0f / CAN_M3508_MAX_ABS_CUR,
+      .d_cutoff_freq = 20.0f,
       .range = -1.0f,
     },
 
@@ -232,7 +232,7 @@ static const Config_RobotParam_t param_hero = {
     },
 
     .low_pass_cutoff_freq = {
-      .in = -1.0f,
+      .in = 45.0f,
       .out = -1.0f,
     },
 		

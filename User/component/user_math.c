@@ -3,6 +3,7 @@
 */
 
 #include "user_math.h"
+#include "angle_track.h"
 
 #include <string.h>
 
@@ -57,7 +58,9 @@ inline void ResetMoveVector(MoveVector_t *mv) { memset(mv, 0, sizeof(*mv)); }
  */
 inline float CircleError(float sp, float fb, float range) {
   float error = sp - fb;
+  if (range == ANGLE_TRACK_TAU) return AngleTrack_Error(sp, fb);
   if (range > 0.0f) {
+    if (fabsf(error) > range) error = fmodf(error, range);
     float half_range = range / 2.0f;
 
     if (error > half_range)
@@ -79,6 +82,7 @@ inline float CircleError(float sp, float fb, float range) {
 inline void CircleAdd(float *origin, float delta, float range) {
   float out = *origin + delta;
   if (range > 0.0f) {
+    if (fabsf(out) >= range) out = fmodf(out, range);
     if (out >= range)
       out -= range;
     else if (out < 0.0f)

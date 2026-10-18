@@ -215,6 +215,8 @@ typedef struct {
 typedef struct {
   CAN_RxHeaderTypeDef rx_header;
   uint8_t rx_data[CAN_RX_BUF_SIZE_MAX];
+  BSP_CAN_t bus;
+  uint32_t receive_tick;
 } CAN_RawRx_t;
 
 typedef struct {
@@ -242,6 +244,10 @@ typedef struct {
 
 typedef struct {
   uint32_t recive_flag;
+  uint32_t chassis_feedback_tick[CAN_MOTOR_CHASSIS_NUM];
+  uint32_t gimbal_feedback_tick[CAN_MOTOR_GIMBAL_NUM];
+  uint32_t gimbal_feedback_count[CAN_MOTOR_GIMBAL_NUM];
+  volatile uint32_t rx_queue_drop_count;
 
   CAN_Motor_t motor;
   CAN_Capacitor_t cap;

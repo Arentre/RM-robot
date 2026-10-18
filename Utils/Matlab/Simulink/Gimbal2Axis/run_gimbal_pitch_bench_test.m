@@ -1,8 +1,8 @@
 function data = run_gimbal_pitch_bench_test(port, step_deg)
-% Safely run a small Pitch step and return. Support the payload by hand.
+% Run a monitored Pitch step and return to the enable pose.
 if nargin < 2, step_deg = 0.5; end
 validateattributes(step_deg,{'numeric'}, ...
-    {'scalar','real','finite','positive','<=',1.0});
+    {'scalar','real','finite','positive','<=',30.0});
 s = getPort(port);
 configureTerminator(s,'LF');
 s.Timeout = 0.25;
@@ -17,9 +17,10 @@ pause(0.05);
 writeline(s,'PITCH=1');
 [a,t0,origin] = collectPhase(s,1.5,0,NaN,NaN);
 writeline(s,sprintf('PITREL=%.3f',step_deg));
-[b,~,~] = collectPhase(s,3.0,1,t0,origin);
+moveTime = max(3.0,0.15*step_deg);
+[b,~,~] = collectPhase(s,moveTime,1,t0,origin);
 writeline(s,'CENTER');
-[c,~,~] = collectPhase(s,3.0,2,t0,origin);
+[c,~,~] = collectPhase(s,moveTime,2,t0,origin);
 writeline(s,'HOLD');
 pause(0.1);
 writeline(s,'STOP');
@@ -51,7 +52,7 @@ nexttile; plot(data.TestTime_s,data.PitchOutput,'k', ...
 grid on; title('Command / actual current');
 legend('Normalized output','Current (A)','Location','best');
 nexttile; plot(data.TestTime_s,data.PitchTravel_deg,'r');
-yline(5,'r:'); yline(-5,'r:'); grid on;
+yline(35,'r:'); yline(-35,'r:'); grid on;
 title('Travel from enable pose'); ylabel('deg'); xlabel('MCU time (s)');
 nexttile; plot(data.TestTime_s,data.PitchTemp_C,'r');
 grid on; title('Motor temperature'); ylabel('deg C'); xlabel('MCU time (s)');
@@ -63,7 +64,7 @@ fprintf('Saved %s and %s\n',csvPath,pngPath);
 end
 
 function [rows,firstMcuTime,origin] = collectPhase(s,duration_s,phase,firstMcuTime,origin)
-rows = zeros(0,42);
+rows = zeros(0,44);
 t0 = tic; lastPing = tic; lastFrame = tic; enableGrace = 0.30;
 while toc(t0) < duration_s
     if toc(lastPing) >= 0.25, writeline(s,'PING'); lastPing = tic; end
@@ -76,8 +77,10 @@ while toc(t0) < duration_s
     line = strtrim(string(readline(s)));
     if ~startsWith(line,'yaw:'), continue; end
     v = str2double(split(extractAfter(line,4),','));
-    if ~(numel(v) == 35 || numel(v) == 41) || any(~isfinite(v)), continue; end
+    if ~(numel(v) == 35 || numel(v) == 41 || numel(v) == 43) || ...
+            any(~isfinite(v)), continue; end
     if numel(v) == 35, v(36:41) = NaN; end
+    if numel(v) == 41, v(42:43) = NaN; end
     lastFrame = tic;
     if phase == 0 && toc(t0) < enableGrace && (v(12) == 0 || v(22) == 0)
         continue
@@ -100,7 +103,7 @@ if reason ~= 0 || v(10) ~= 0 || v(12) == 0 || v(22) == 0
     writeline(s,'STOP');
     error('Controller stopped or protected: stop reason %.0f.',reason);
 end
-if abs(travel) > 5.5 || abs(v(15)) > 120 || abs(v(20)) > 0.101 || ...
+if abs(travel) > 35.5 || abs(v(15)) > 180 || abs(v(20)) > 0.301 || ...
         abs(v(29)) > 0.45 || v(31) > 80
     writeline(s,'STOP');
     error(['Pitch safety threshold exceeded; STOP sent. Travel %.2f deg, ' ...
@@ -120,7 +123,8 @@ names = {'YawTarget_deg','YawFeedback_deg','YawRate_deg_s','YawError_deg', ...
     'McuTime_s','YawActualCurrent_A','PitchActualCurrent_A','YawTemp_C', ...
     'PitchTemp_C','StopReason','YawOrigin_deg','YawTravel_deg', ...
     'YawFrictionFF','GyroX_deg_s','GyroY_deg_s','GyroZ_deg_s', ...
-    'AccelX_g','AccelY_g','AccelZ_g'};
+    'AccelX_g','AccelY_g','AccelZ_g','RollFeedback_deg', ...
+    'BulletSpeed_m_s'};
 end
 
 function s = getPort(port)

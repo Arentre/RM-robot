@@ -23,6 +23,9 @@ extern "C" {
 #define CHASSIS_ERR_MODE (-3) /* 运行时配置了错误的CMD_ChassisMode_t */
 #define CHASSIS_ERR_TYPE (-4) /* 运行时配置了错误的Chassis_Type_t */
 
+/* M3508 配套减速箱传动比，来源为 3591/187 */
+#define CHASSIS_M3508_GEAR_RATIO (3591.0f / 187.0f)
+
 /* Exported macro ----------------------------------------------------------- */
 /* Exported types ----------------------------------------------------------- */
 
@@ -63,6 +66,7 @@ typedef struct {
 typedef struct {
   uint32_t lask_wakeup;
   float dt;
+  float control_period_s;
 
   const Chassis_Params_t *param; /* 底盘的参数，用Chassis_Init设定 */
   AHRS_Eulr_t *mech_zero;
@@ -88,6 +92,7 @@ typedef struct {
   /* PID计算的目标值 */
   struct {
     float *motor_rpm; /* 电机转速的动态数组，单位：RPM */
+    float *ramped_motor_rpm; /* 经过斜坡与换向保护的目标转速，单位 RPM */
   } setpoint;
 
   /* 反馈控制用的PID */

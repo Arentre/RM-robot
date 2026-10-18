@@ -10,6 +10,7 @@ extern "C" {
 
 /* Includes ----------------------------------------------------------------- */
 #include "component\ahrs.h"
+#include "component/angle_track.h"
 #include "component\cmd.h"
 #include "component\filter.h"
 #include "component\gimbal_ff.h"
@@ -25,8 +26,10 @@ extern "C" {
 #define GIMBAL_ERR_NULL (-2) /* 运行时发现NULL指针 */
 #define GIMBAL_ERR_MODE (-3) /* 运行时配置了错误的CMD_GimbalMode_t */
 
-/* No bench step/travel/rate stops. Keep the absolute Pitch attitude limit. */
-#define GIMBAL_PITCH_SAFE_LIMIT_RAD (1.22173048f)   /* 70 deg absolute */
+/* Retain only the absolute Pitch and extreme body-rate safety stops. */
+#define GIMBAL_PITCH_SAFE_LIMIT_RAD (1.22173048f)   /* 70 deg soft target limit */
+#define GIMBAL_PITCH_FAULT_LIMIT_RAD (1.39626340f)  /* 80 deg abnormal overtravel */
+#define GIMBAL_GYRO_SAFE_NORM_RAD_S (12.21730476f)  /* 700 deg/s body norm */
 #define GIMBAL_NORMALIZED_OUTPUT_MAX (1.0f)         /* CAN command range */
 
 /* Exported macro ----------------------------------------------------------- */
@@ -53,12 +56,28 @@ typedef enum {
   GIMBAL_TEST_STOP_COMMAND = 1,
   GIMBAL_TEST_STOP_TIMEOUT = 2, /* Reserved legacy code; no serial timeout. */
   GIMBAL_TEST_STOP_YAW_TRAVEL = 3, /* Reserved legacy code; no travel stop. */
-  GIMBAL_TEST_STOP_RATE = 4,       /* Reserved legacy code; no rate stop. */
+  GIMBAL_TEST_STOP_RATE = 4,       /* Body gyro norm exceeded safe range. */
   GIMBAL_TEST_STOP_INVALID_FEEDBACK = 5,
   GIMBAL_TEST_STOP_PITCH_PROTECT = 6,
   GIMBAL_TEST_STOP_PITCH_TRAVEL = 7, /* Reserved legacy code; no travel stop. */
   GIMBAL_TEST_STOP_INVALID_TARGET = 8,
+  GIMBAL_TEST_STOP_CAN_TX = 9,
+  GIMBAL_TEST_STOP_ACTUATOR_CURRENT = 10,
+  GIMBAL_TEST_STOP_CAN_RX = 11,
 } Gimbal_TestStopReason_e;
+
+/* Keil Watch diagnostics. Last reason survives CH5 disarm/rearm. */
+typedef struct {
+  uint32_t last_reason;
+  uint32_t trip_count;
+  uint32_t fault_latched;
+  uint32_t tx_age_ms;
+  uint32_t feedback_age_ms[GIMBAL_ACTR_NUM];
+  uint32_t feedback_count[GIMBAL_ACTR_NUM];
+  uint32_t rx_queue_drop_count;
+} GimbalProtectionStatus_t;
+
+extern volatile GimbalProtectionStatus_t gimbal_protection_status;
 
 /* 云台参数的结构体，包含所有初始化用的参数，通常是const，存好几组。*/
 typedef struct {
@@ -90,6 +109,9 @@ typedef struct {
 typedef struct {
   AHRS_Accl_t accl; /* Raw BMI088 acceleration, in g. */
   AHRS_Gyro_t gyro; /* IMU的陀螺仪数据 */
+  /* ZYX Euler rates derived from body gyro p/q/r.  Angle controllers must
+   * use these rates once Pitch/Roll are away from zero. */
+  AHRS_Gyro_t eulr_rate;
 
   struct {
     float yaw_current; /* GM6020 actual torque current, A */
@@ -138,11 +160,20 @@ typedef struct {
 
   Gimbal_Feedback_t feedback; /* 反馈 */
 
+  /* Motor joint position: continuous radians, not world-frame attitude. */
+  AngleTrack_t encoder_track[GIMBAL_ACTR_NUM];
+  uint32_t encoder_sample_count[GIMBAL_ACTR_NUM];
+  float encoder_delta[GIMBAL_ACTR_NUM];
+  uint8_t encoder_fresh[GIMBAL_ACTR_NUM];
+  AngleAssist_t yaw_assist;
+  float yaw_control_feedback;
+
 } Gimbal_t;
 
 /* Keil Watch调试入口：默认使用LADRC，置0可逐轴回退。 */
 extern volatile uint8_t gimbal_ladrc_yaw_enable;
 extern volatile uint8_t gimbal_ladrc_pit_enable;
+extern volatile uint16_t gimbal_actuator_mismatch_count[GIMBAL_ACTR_NUM];
 extern volatile float gimbal_pitch_output_filter_hz;
 extern volatile LADRC_Params_t gimbal_ladrc_yaw_param;
 extern volatile LADRC_Params_t gimbal_ladrc_pit_param;

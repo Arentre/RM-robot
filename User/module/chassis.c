@@ -27,6 +27,12 @@
 // 随机产生小陀螺转动频率，范围0.001-0.05
 //#define CHASSIS_ROTOR_OMEGA rand() % 50 / 10000.0f + 0.001f
 #define CHASSIS_ROTOR_OMEGA 0.001
+
+/* 与已验证底盘一致，以下转速均换算为 M3508 转子侧数值 */
+#define CHASSIS_SPEED_LIMIT_RPM (300.0f * CHASSIS_M3508_GEAR_RATIO)
+#define CHASSIS_RAMP_RATE_RPM_S (200.0f * CHASSIS_M3508_GEAR_RATIO)
+#define CHASSIS_REVERSAL_ZERO_SPEED_RPM (10.0f * CHASSIS_M3508_GEAR_RATIO)
+#define CHASSIS_CURRENT_LIMIT_NORMALIZED (4.0f / CAN_M3508_MAX_ABS_CUR)
 /* Private macro ------------------------------------------------------------ */
 
 /* 保证电容电量宏定义在正确范围内 */
@@ -69,6 +75,7 @@ static int8_t Chassis_SetMode(Chassis_t *c, CMD_ChassisMode_t mode,
     PID_Reset(c->pid.motor + i);
     LowPassFilter2p_Reset(c->filter.in + i, 0.0f);
     LowPassFilter2p_Reset(c->filter.out + i, 0.0f);
+    c->setpoint.ramped_motor_rpm[i] = 0.0f;
   }
   c->mode = mode;
 
@@ -106,6 +113,7 @@ int8_t Chassis_Init(Chassis_t *c, const Chassis_Params_t *param,
   c->param = param;             /* 初始化参数 */
   c->mode = CHASSIS_MODE_RELAX; /* 设置上电后底盘默认模式 */
   c->mech_zero = mech_zero;     /* 设置底盘机械零点 */
+  c->control_period_s = 1.0f / target_freq;
 
   /* 如果电机反装重新计算机械零点 */
   if (param->reverse.yaw) CircleReverse(&(c->mech_zero->yaw));
@@ -161,6 +169,10 @@ int8_t Chassis_Init(Chassis_t *c, const Chassis_Params_t *param,
       BSP_Malloc((size_t)c->num_wheel * sizeof(*c->setpoint.motor_rpm));
   if (c->setpoint.motor_rpm == NULL) goto error;
 
+  c->setpoint.ramped_motor_rpm = BSP_Malloc(
+      (size_t)c->num_wheel * sizeof(*c->setpoint.ramped_motor_rpm));
+  if (c->setpoint.ramped_motor_rpm == NULL) goto error;
+
   c->pid.motor = BSP_Malloc((size_t)c->num_wheel * sizeof(*c->pid.motor));
   if (c->pid.motor == NULL) goto error;
 
@@ -182,6 +194,9 @@ int8_t Chassis_Init(Chassis_t *c, const Chassis_Params_t *param,
                          c->param->low_pass_cutoff_freq.in);
     LowPassFilter2p_Init(c->filter.out + i, target_freq,
                          c->param->low_pass_cutoff_freq.out);
+    c->setpoint.motor_rpm[i] = 0.0f;
+    c->setpoint.ramped_motor_rpm[i] = 0.0f;
+    c->out[i] = 0.0f;
   }
 
   /* 初始化跟随云台的控制PID */
@@ -195,6 +210,7 @@ error:
   /* 动态内存分配错误时，释放已经分配的内存，返回错误值 */
   BSP_Free(c->feedback.motor_rpm);
   BSP_Free(c->setpoint.motor_rpm);
+  BSP_Free(c->setpoint.ramped_motor_rpm);
   BSP_Free(c->pid.motor);
   BSP_Free(c->out);
   BSP_Free(c->filter.in);
@@ -248,7 +264,12 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
   if (c == NULL) return CHASSIS_ERR_NULL;
   if (c_cmd == NULL) return CHASSIS_ERR_NULL;
 
-  c->dt = (float)(now - c->lask_wakeup) / 1000.0f;
+  const float measured_dt =
+      (float)(now - c->lask_wakeup) / (float)osKernelGetTickFreq();
+  c->dt = c->lask_wakeup != 0U && measured_dt > 0.0f &&
+                  measured_dt <= c->control_period_s * 2.0f
+              ? measured_dt
+              : c->control_period_s;
   c->lask_wakeup = now;
 
   /* 根据遥控器命令更改底盘模式 */
@@ -264,7 +285,7 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
 
     case CHASSIS_MODE_INDENPENDENT: /* 独立模式控制向量与运动向量相等 */
       c->move_vec.vx = c_cmd->ctrl_vec.vx;
-      c->move_vec.vy = c_cmd->ctrl_vec.vx;
+      c->move_vec.vy = c_cmd->ctrl_vec.vy;
       break;
 
     case CHASSIS_MODE_OPEN:
@@ -286,8 +307,11 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
   switch (c->mode) {
     case CHASSIS_MODE_RELAX:
     case CHASSIS_MODE_BREAK:
-    case CHASSIS_MODE_INDENPENDENT: /* 独立模式wz为0 */
       c->move_vec.wz = 0.0f;
+      break;
+
+    case CHASSIS_MODE_INDENPENDENT: /* 独立模式直接使用底盘旋转指令 */
+      c->move_vec.wz = c_cmd->ctrl_vec.wz;
       break;
 
     case CHASSIS_MODE_OPEN:
@@ -308,13 +332,33 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
 
   /* move_vec -> motor_rpm_set. 通过运动向量计算轮子转速目标值 */
   Mixer_Apply(&(c->mixer), &(c->move_vec), c->setpoint.motor_rpm, c->num_wheel,
-              7000.0f);
+              CHASSIS_SPEED_LIMIT_RPM);
 
   /* 根据轮子转速目标值，利用PID计算电机输出值 */
   for (uint8_t i = 0; i < c->num_wheel; i++) {
     /* 输入滤波. */
     c->feedback.motor_rpm[i] =
         LowPassFilter2p_Apply(c->filter.in + i, c->feedback.motor_rpm[i]);
+
+    /* 换向时先制动到低速，再按固定斜率建立新的目标转速 */
+    float effective_target_rpm = c->setpoint.motor_rpm[i];
+    if ((c->feedback.motor_rpm[i] > CHASSIS_REVERSAL_ZERO_SPEED_RPM &&
+         effective_target_rpm < 0.0f) ||
+        (c->feedback.motor_rpm[i] < -CHASSIS_REVERSAL_ZERO_SPEED_RPM &&
+         effective_target_rpm > 0.0f)) {
+      effective_target_rpm = 0.0f;
+      PID_ResetIntegral(c->pid.motor + i);
+    }
+
+    const float ramp_step = CHASSIS_RAMP_RATE_RPM_S * c->dt;
+    const float ramp_error = effective_target_rpm - c->setpoint.ramped_motor_rpm[i];
+    if (ramp_error > ramp_step) {
+      c->setpoint.ramped_motor_rpm[i] += ramp_step;
+    } else if (ramp_error < -ramp_step) {
+      c->setpoint.ramped_motor_rpm[i] -= ramp_step;
+    } else {
+      c->setpoint.ramped_motor_rpm[i] = effective_target_rpm;
+    }
 
     /* 根据底盘模式计算输出值 */
     switch (c->mode) {
@@ -323,7 +367,8 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
       case CHASSIS_MODE_FOLLOW_GIMBAL_35:
       case CHASSIS_MODE_ROTOR:
       case CHASSIS_MODE_INDENPENDENT: /* 独立模式,受PID控制 */
-        c->out[i] = PID_Calc(c->pid.motor + i, c->setpoint.motor_rpm[i],
+        c->out[i] = PID_Calc(c->pid.motor + i,
+                             c->setpoint.ramped_motor_rpm[i],
                              c->feedback.motor_rpm[i], 0.0f, c->dt);
         break;
 
@@ -335,8 +380,16 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
         c->out[i] = 0;
         break;
     }
-    /* 输出滤波. */
-    c->out[i] = LowPassFilter2p_Apply(c->filter.out + i, c->out[i]);
+    /* RELAX is a safety state and must not retain an output-filter tail. */
+    if (c->mode == CHASSIS_MODE_RELAX) {
+      c->setpoint.ramped_motor_rpm[i] = 0.0f;
+      PID_Reset(c->pid.motor + i);
+      LowPassFilter2p_Reset(c->filter.out + i, 0.0f);
+      c->out[i] = 0.0f;
+    } else {
+      c->out[i] = LowPassFilter2p_Apply(c->filter.out + i, c->out[i]);
+      c->out[i] = AbsClip(c->out[i], CHASSIS_CURRENT_LIMIT_NORMALIZED);
+    }
   }
 
   return CHASSIS_OK;

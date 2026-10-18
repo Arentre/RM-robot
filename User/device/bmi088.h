@@ -58,6 +58,7 @@ uint32_t BMI088_GyroWaitDmaCplt();
 int8_t BMI088_ParseAccl(BMI088_t *bmi088);
 int8_t BMI088_ParseGyro(BMI088_t *bmi088);
 float BMI088_GetUpdateFreq(BMI088_t *bmi088);
+float BMI088_GetAcclUpdateFreq(BMI088_t *bmi088);
 
 #ifdef __cplusplus
 }

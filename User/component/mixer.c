@@ -68,7 +68,20 @@ int8_t Mixer_Apply(Mixer_t *mixer, MoveVector_t *move_vec, float *out,
       } else {
         goto error;
       }
+      break;
+
     case MIXER_OMNICROSS:
+      if (len == 4) {
+        /* 轮序依次为左前、左后、右后、右前，正转动为俯视逆时针 */
+        out[0] = -move_vec->vx + move_vec->vy + move_vec->wz;
+        out[1] = -move_vec->vx - move_vec->vy + move_vec->wz;
+        out[2] = move_vec->vx - move_vec->vy + move_vec->wz;
+        out[3] = move_vec->vx + move_vec->vy + move_vec->wz;
+      } else {
+        goto error;
+      }
+      break;
+
     case MIXER_OMNIPLUS:
       goto error;
   }

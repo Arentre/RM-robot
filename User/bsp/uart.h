@@ -25,6 +25,10 @@ typedef enum {
   BSP_UART_ERR,
 } BSP_UART_t;
 
+/* The connector marked UART2 is STM32 USART1. ELRS reuses that physical
+ * port while the referee task is disabled. */
+#define BSP_UART_ELRS BSP_UART_REF
+
 /* UART支持的中断回调函数类型，具体参考HAL中定义 */
 typedef enum {
   BSP_UART_TX_HALF_CPLT_CB,
@@ -45,6 +49,8 @@ void BSP_UART_IRQHandler(UART_HandleTypeDef *huart);
 UART_HandleTypeDef *BSP_UART_GetHandle(BSP_UART_t uart);
 int8_t BSP_UART_RegisterCallback(BSP_UART_t uart, BSP_UART_Callback_t type,
                                  void (*callback)(void));
+int8_t BSP_UART_RegisterRxEventCallback(
+    BSP_UART_t uart, void (*callback)(uint16_t size));
 
 #ifdef __cplusplus
 }

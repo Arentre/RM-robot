@@ -30,6 +30,19 @@ extern "C" {
 #define TASK_INIT_DELAY_REFEREE (400u)
 #define TASK_INIT_DELAY_AI (400u)
 
+typedef struct {
+  /* Legacy success fields mean HAL enqueue success, NOT motor acknowledgement. */
+  volatile uint32_t last_success_tick;
+  volatile uint32_t success_count;
+  volatile uint32_t failure_count;
+  volatile uint32_t tx_status_register; /* Raw TSR snapshot; shared by all groups. */
+  volatile uint32_t bus_esr; /* Hardware ESR: bus-off, error counters and LEC. */
+  volatile uint32_t free_mailboxes;
+  volatile uint32_t output_age_ms;
+} GimbalCANTxHealth_t;
+
+extern GimbalCANTxHealth_t gimbal_can_tx_health;
+
 /* Exported defines --------------------------------------------------------- */
 /* Exported macro ----------------------------------------------------------- */
 /* Exported types ----------------------------------------------------------- */
@@ -196,6 +209,7 @@ typedef struct {
 
 extern Task_Runtime_t task_runtime;
 extern volatile float gimbal_imu_temperature_c;
+extern volatile float gimbal_imu_heater_duty;
 extern volatile GimbalTargetInput_t gimbal_target_input;
 extern volatile float gimbal_referee_bullet_speed_mps;
 

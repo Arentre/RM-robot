@@ -4,6 +4,9 @@
 
 /* Includes ----------------------------------------------------------------- */
 #include "gimbal.h"
+#include "component/joint_limit.h"
+
+#include <string.h>
 
 #include "bsp/mm.h"
 
@@ -13,7 +16,7 @@
 /* Private variables -------------------------------------------------------- */
 volatile uint8_t gimbal_pitch_protect_active = 0U;
 volatile uint8_t gimbal_ladrc_yaw_enable = 1U;
-volatile uint8_t gimbal_ladrc_pit_enable = 0U;
+volatile uint8_t gimbal_ladrc_pit_enable = 1U;
 /* Runtime Pitch-only output shaping. Bypass until hardware validation. */
 volatile float gimbal_pitch_output_filter_hz = 0.0f;
 
@@ -24,12 +27,37 @@ volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
 volatile LADRC_Params_t gimbal_ladrc_pit_param = {
     .r = 13.0f, .b0 = 550.0f, .wc = 7.0f, .w0 = 22.0f,
     .out_limit = 0.3f, .deadband_rad = 0.00523599f}; /* 0.3 deg */
-volatile uint8_t gimbal_yaw_dither_enable = 1U;
+volatile uint8_t gimbal_yaw_dither_enable = 0U;
 volatile float gimbal_yaw_dither_amplitude = 0.008f;
 volatile float gimbal_yaw_dither_frequency_hz = 25.0f;
 volatile float gimbal_yaw_dither_output = 0.0f;
 static float gimbal_yaw_dither_phase = 0.0f;
 /* Private function  -------------------------------------------------------- */
+
+static void Gimbal_UpdateEulerRate(Gimbal_t *g) {
+  const float roll = g->feedback.eulr.imu.rol;
+  const float pitch = g->feedback.eulr.imu.pit;
+  const float p = g->feedback.gyro.x;
+  const float q = g->feedback.gyro.y;
+  const float r = g->feedback.gyro.z;
+  const float cos_roll = cosf(roll);
+  const float sin_roll = sinf(roll);
+  const float cos_pitch = cosf(pitch);
+
+  if (!isfinite(roll) || !isfinite(pitch) || !isfinite(p) || !isfinite(q) ||
+      !isfinite(r) || fabsf(cos_pitch) < 0.1f) {
+    g->feedback.eulr_rate = g->feedback.gyro;
+    return;
+  }
+
+  const float pitch_rate = cos_roll * q - sin_roll * r;
+  const float yaw_rate =
+      (sin_roll * q + cos_roll * r) / cos_pitch;
+  g->feedback.eulr_rate.x =
+      p + sinf(pitch) * yaw_rate;
+  g->feedback.eulr_rate.y = pitch_rate;
+  g->feedback.eulr_rate.z = yaw_rate;
+}
 
 static void Gimbal_ApplyFeedforward(Gimbal_t *g) {
   if (g == NULL || g->mode != GIMBAL_MODE_ABSOLUTE ||
@@ -41,23 +69,26 @@ static void Gimbal_ApplyFeedforward(Gimbal_t *g) {
   }
 
   const float yaw_error = CircleError(g->setpoint.eulr.yaw,
-                                      g->feedback.eulr.imu.yaw, M_2PI);
+                                      g->yaw_control_feedback, M_2PI);
   if (gimbal_ladrc_yaw_enable != 0U &&
       g->ladrc[GIMBAL_ACTR_YAW_IDX].deadband_active != 0U) {
-    GimbalFriction_Reset(&gimbal_yaw_friction);
+    g->out[GIMBAL_ACTR_YAW_IDX] +=
+        GimbalFriction_Release(&gimbal_yaw_friction, g->dt);
   } else {
     g->out[GIMBAL_ACTR_YAW_IDX] += GimbalFriction_Update(
-        &gimbal_yaw_friction, yaw_error, g->feedback.gyro.z, g->dt);
+        &gimbal_yaw_friction, yaw_error, g->feedback.eulr_rate.z, g->dt);
   }
 
   if (gimbal_ladrc_pit_enable != 0U) {
     const float pitch_error = CircleError(g->pit_control_target,
                                           g->feedback.eulr.imu.pit, M_2PI);
     if (g->ladrc[GIMBAL_ACTR_PIT_IDX].deadband_active != 0U) {
-      GimbalFriction_Reset(&gimbal_pitch_friction);
+      g->out[GIMBAL_ACTR_PIT_IDX] +=
+          GimbalFriction_Release(&gimbal_pitch_friction, g->dt);
     } else {
       g->out[GIMBAL_ACTR_PIT_IDX] += GimbalFriction_Update(
-          &gimbal_pitch_friction, pitch_error, g->feedback.gyro.y, g->dt);
+          &gimbal_pitch_friction, pitch_error, g->feedback.eulr_rate.y,
+          g->dt);
     }
     /* A calibrated gravity term still supports Pitch inside the deadband. */
     g->out[GIMBAL_ACTR_PIT_IDX] +=
@@ -92,13 +123,7 @@ static float Gimbal_LADRCControl(LADRC_t *ctrl,
     *active = 1U;
   }
 
-  /* 将±pi反馈映射到观测器附近，并把目标映射为最短路径等效角。 */
-  const float feedback_continuous =
-      ctrl->z1 + CircleError(feedback, ctrl->z1, M_2PI);
-  const float reference_continuous =
-      feedback_continuous + CircleError(setpoint, feedback, M_2PI);
-  return LADRC_Update(ctrl, reference_continuous, feedback_continuous,
-                      angular_speed);
+  return LADRC_UpdateAngle(ctrl, setpoint, feedback, angular_speed);
 }
 
 /**
@@ -125,7 +150,7 @@ static int8_t Gimbal_SetMode(Gimbal_t *g, CMD_GimbalMode_t mode) {
    * setpoint while relaxed so STOP cannot appear as an unsolicited 0/360 deg
    * target jump in telemetry. */
   if (mode == GIMBAL_MODE_ABSOLUTE) {
-    g->setpoint.eulr.yaw = g->feedback.eulr.imu.yaw;
+    g->setpoint.eulr.yaw = g->yaw_control_feedback;
     g->setpoint.eulr.pit = g->feedback.eulr.imu.pit;
   } else if ((g->mode == GIMBAL_MODE_RELAX) &&
              (mode == GIMBAL_MODE_RELATIVE)) {
@@ -153,6 +178,12 @@ int8_t Gimbal_Init(Gimbal_t *g, const Gimbal_Params_t *param, float limit_max,
 
   g->param = param;            /* 初始化参数 */
   g->mode = GIMBAL_MODE_RELAX; /* 设置默认模式 */
+  memset(g->encoder_track, 0, sizeof(g->encoder_track));
+  memset(g->encoder_sample_count, 0, sizeof(g->encoder_sample_count));
+  memset(g->encoder_delta, 0, sizeof(g->encoder_delta));
+  memset(g->encoder_fresh, 0, sizeof(g->encoder_fresh));
+  memset(&g->yaw_assist, 0, sizeof(g->yaw_assist));
+  g->yaw_control_feedback = 0.0f;
 
   /* 设置软件限位 */
   if (g->param->reverse.pit) CircleReverse(&limit_max);
@@ -211,6 +242,31 @@ int8_t Gimbal_UpdateFeedback(Gimbal_t *gimbal, const CAN_t *can) {
   if (gimbal->param->reverse.pit)
     CircleReverse(&(gimbal->feedback.eulr.encoder.pit));
 
+  const float encoder_angle[GIMBAL_ACTR_NUM] = {
+      gimbal->feedback.eulr.encoder.yaw, gimbal->feedback.eulr.encoder.pit};
+  const uint32_t now = osKernelGetTickCount();
+  const uint32_t max_gap = (20U * osKernelGetTickFreq() + 999U) / 1000U;
+  for (uint8_t i = 0U; i < GIMBAL_ACTR_NUM; i++) {
+    gimbal->encoder_fresh[i] = 0U;
+    gimbal->encoder_delta[i] = 0.0f;
+    if (can->gimbal_feedback_count[i] == 0U ||
+        can->gimbal_feedback_count[i] == gimbal->encoder_sample_count[i])
+      continue;
+    AngleTrack_t *track = &gimbal->encoder_track[i];
+    const uint8_t continuous_sample =
+        track->ready != 0U &&
+        (uint32_t)(can->gimbal_feedback_tick[i] - track->sample_tick) <= max_gap &&
+        (uint32_t)(now - can->gimbal_feedback_tick[i]) <= max_gap;
+    const float previous = track->continuous;
+    AngleTrack_Update(track, encoder_angle[i], can->gimbal_feedback_tick[i],
+                       max_gap);
+    if (continuous_sample != 0U) {
+      gimbal->encoder_delta[i] = track->continuous - previous;
+      gimbal->encoder_fresh[i] = 1U;
+    }
+    gimbal->encoder_sample_count[i] = can->gimbal_feedback_count[i];
+  }
+
   return 0;
 }
 
@@ -231,9 +287,18 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
   g->dt = (float)(now - g->lask_wakeup) / 1000.0f;
   g->lask_wakeup = now;
 
+  Gimbal_UpdateEulerRate(g);
+  const float assist_dt = g->dt > 0.0f && g->dt <= 0.02f ? g->dt : 0.002f;
+  const float yaw_continuous = AngleAssist_Update(
+      &g->yaw_assist, g->feedback.eulr.imu.yaw,
+      g->feedback.eulr_rate.z * assist_dt,
+      g->encoder_delta[GIMBAL_ACTR_YAW_IDX],
+      g->encoder_fresh[GIMBAL_ACTR_YAW_IDX]);
+  g->yaw_control_feedback = fmodf(yaw_continuous, M_2PI);
+  if (g->yaw_control_feedback < 0.0f) g->yaw_control_feedback += M_2PI;
   Gimbal_SetMode(g, g_cmd->mode);
   gimbal_pitch_protect_active =
-      fabsf(g->feedback.eulr.imu.pit) > GIMBAL_PITCH_SAFE_LIMIT_RAD;
+      fabsf(g->feedback.eulr.imu.pit) > GIMBAL_PITCH_FAULT_LIMIT_RAD;
 
   /* yaw坐标正方向与遥控器操作逻辑相反 */
   g_cmd->delta_eulr.pit = -g_cmd->delta_eulr.pit;
@@ -248,11 +313,11 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
    * calibration generated a false -70 deg reference. */
   const float requested_pitch =
       g->setpoint.eulr.pit + g_cmd->delta_eulr.pit;
-  g->pit_control_target = requested_pitch;
-  Clip(&g->pit_control_target, -GIMBAL_PITCH_SAFE_LIMIT_RAD,
-       GIMBAL_PITCH_SAFE_LIMIT_RAD);
+  g->pit_control_target = JointLimit_Target(
+      requested_pitch, -GIMBAL_PITCH_SAFE_LIMIT_RAD, GIMBAL_PITCH_SAFE_LIMIT_RAD);
   g->pit_limit_active =
-      fabsf(g->pit_control_target - requested_pitch) > 0.00001f;
+      fabsf(g->pit_control_target - requested_pitch) > 0.00001f ||
+      fabsf(g->feedback.eulr.imu.pit) >= GIMBAL_PITCH_SAFE_LIMIT_RAD;
   g->setpoint.eulr.pit = g->pit_control_target;
 
   /* 重置输入指令，防止重复处理 */
@@ -289,7 +354,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
         g->out[GIMBAL_ACTR_YAW_IDX] = Gimbal_LADRCControl(
             &(g->ladrc[GIMBAL_ACTR_YAW_IDX]), &gimbal_ladrc_yaw_param,
             &(g->ladrc_active[GIMBAL_ACTR_YAW_IDX]), g->setpoint.eulr.yaw,
-            g->feedback.eulr.imu.yaw, g->feedback.gyro.z,
+            g->yaw_control_feedback, g->feedback.eulr_rate.z,
             g->ladrc[GIMBAL_ACTR_YAW_IDX].T);
       } else {
         if (g->ladrc_active[GIMBAL_ACTR_YAW_IDX] != 0U) {
@@ -301,10 +366,10 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
         g->ladrc_active[GIMBAL_ACTR_YAW_IDX] = 0U;
         yaw_omega_set_point = PID_Calc(
             &(g->pid[GIMBAL_PID_YAW_ANGLE_IDX]), g->setpoint.eulr.yaw,
-            g->feedback.eulr.imu.yaw, 0.0f, g->dt);
+            g->yaw_control_feedback, 0.0f, g->dt);
         g->out[GIMBAL_ACTR_YAW_IDX] = PID_Calc(
             &(g->pid[GIMBAL_PID_YAW_OMEGA_IDX]), yaw_omega_set_point,
-            g->feedback.gyro.z, 0.f, g->dt);
+            g->feedback.eulr_rate.z, 0.f, g->dt);
       }
 
       if (gimbal_ladrc_pit_enable != 0U) {
@@ -317,7 +382,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
         g->out[GIMBAL_ACTR_PIT_IDX] = Gimbal_LADRCControl(
             &(g->ladrc[GIMBAL_ACTR_PIT_IDX]), &gimbal_ladrc_pit_param,
             &(g->ladrc_active[GIMBAL_ACTR_PIT_IDX]), g->pit_control_target,
-            g->feedback.eulr.imu.pit, g->feedback.gyro.y,
+            g->feedback.eulr.imu.pit, g->feedback.eulr_rate.y,
             g->ladrc[GIMBAL_ACTR_PIT_IDX].T);
       } else {
         /* Yaw-only baseline: ID6 remains zero until Pitch LADRC is enabled. */
@@ -344,7 +409,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
   }
 
   const float yaw_error =
-      CircleError(g->setpoint.eulr.yaw, g->feedback.eulr.imu.yaw, M_2PI);
+      CircleError(g->setpoint.eulr.yaw, g->yaw_control_feedback, M_2PI);
   if (gimbal_yaw_dither_enable != 0U &&
       g->mode == GIMBAL_MODE_ABSOLUTE &&
       gimbal_pitch_protect_active == 0U &&
@@ -352,7 +417,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
        g->ladrc[GIMBAL_ACTR_YAW_IDX].deadband_active == 0U) &&
       fabsf(yaw_error) > gimbal_yaw_friction.deadband_rad &&
       fabsf(yaw_error) < 0.02617994f && /* 1.5 deg */
-      fabsf(g->feedback.gyro.z) < 0.01745329f) { /* 1 deg/s */
+      fabsf(g->feedback.eulr_rate.z) < 0.01745329f) { /* 1 deg/s */
     gimbal_yaw_dither_phase +=
         M_2PI * gimbal_yaw_dither_frequency_hz * g->dt;
     if (gimbal_yaw_dither_phase >= M_2PI)
@@ -367,7 +432,7 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
 
   /* 输出滤波 */
   for (uint8_t i = 0; i < GIMBAL_ACTR_NUM; i++) {
-    /* STOP and the retained 70 deg limit must bypass all output tails. */
+    /* STOP and abnormal overtravel must bypass all output tails. */
     if (g->mode != GIMBAL_MODE_ABSOLUTE ||
         gimbal_pitch_protect_active != 0U) {
       LowPassFilter2p_Reset(g->filter_out + i, 0.0f);
@@ -380,10 +445,33 @@ int8_t Gimbal_Control(Gimbal_t *g, CMD_GimbalCmd_t *g_cmd, uint32_t now) {
         g->ladrc[i].deadband_active != 0U)
       LowPassFilter2p_Reset(g->filter_out + i, g->out[i]);
     g->out[i] = LowPassFilter2p_Apply(g->filter_out + i, g->out[i]);
-    Clip(&g->out[i], -GIMBAL_NORMALIZED_OUTPUT_MAX,
-         GIMBAL_NORMALIZED_OUTPUT_MAX);
+
+    /* Feedforward is part of the actuator command, so it must not bypass the
+     * configured LADRC output limit.  The old path allowed a 0.30 limit to
+     * become 0.32 after friction compensation during Yaw runaway. */
+    float output_limit = GIMBAL_NORMALIZED_OUTPUT_MAX;
+    if (i == GIMBAL_ACTR_YAW_IDX && gimbal_ladrc_yaw_enable != 0U)
+      output_limit = gimbal_ladrc_yaw_param.out_limit;
+    else if (i == GIMBAL_ACTR_PIT_IDX && gimbal_ladrc_pit_enable != 0U)
+      output_limit = gimbal_ladrc_pit_param.out_limit;
+    if (output_limit > GIMBAL_NORMALIZED_OUTPUT_MAX)
+      output_limit = GIMBAL_NORMALIZED_OUTPUT_MAX;
+    Clip(&g->out[i], -output_limit, output_limit);
   }
   if (gimbal_ladrc_pit_enable == 0U) g->out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
+
+  /* Normal limit is directional, never a mode change or a latched fault.
+   * Apply after feedforward and filtering so neither can push past the limit. */
+  const float limited_pitch_output = JointLimit_Output(
+      g->feedback.eulr.imu.pit, g->out[GIMBAL_ACTR_PIT_IDX],
+      -GIMBAL_PITCH_SAFE_LIMIT_RAD, GIMBAL_PITCH_SAFE_LIMIT_RAD);
+  if (limited_pitch_output != g->out[GIMBAL_ACTR_PIT_IDX]) {
+    g->out[GIMBAL_ACTR_PIT_IDX] = limited_pitch_output;
+    LowPassFilter2p_Reset(&g->filter_out[GIMBAL_ACTR_PIT_IDX], 0.0f);
+    LADRC_Reset(&g->ladrc[GIMBAL_ACTR_PIT_IDX],
+                 g->feedback.eulr.imu.pit, g->feedback.eulr_rate.y);
+    GimbalFriction_Reset(&gimbal_pitch_friction);
+  }
 
   /* 处理电机反装 */
   if (g->param->reverse.yaw)

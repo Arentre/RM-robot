@@ -1,13 +1,35 @@
 #include "ladrc.h"
+#include "angle_track.h"
 
 #include <math.h>
 #include <stddef.h>
 #include <string.h>
 
+#define LADRC_DEADBAND_ENTER_RATE_RAD_S 0.03490659f /* 2 deg/s */
+#define LADRC_DEADBAND_EXIT_RATE_RAD_S 0.05235988f  /* 3 deg/s */
+#define LADRC_DEADBAND_SETTLE_TIME_S 0.020f
+
 static float LADRC_Limit(float value, float limit) {
   if (value > limit) return limit;
   if (value < -limit) return -limit;
   return value;
+}
+
+float LADRC_UpdateAngle(LADRC_t *ctrl, float reference, float feedback,
+                        float angular_speed) {
+  if (ctrl == NULL) return 0.0f;
+  /* Shift position states together; derivative histories are rates, not angles. */
+  if (fabsf(ctrl->z1) >= ANGLE_TRACK_TAU) {
+    const float offset = truncf(ctrl->z1 / ANGLE_TRACK_TAU) * ANGLE_TRACK_TAU;
+    ctrl->z1 -= offset;
+    ctrl->v1 -= offset;
+  }
+  const float continuous_feedback =
+      ctrl->z1 + AngleTrack_Error(feedback, ctrl->z1);
+  const float continuous_reference =
+      continuous_feedback + AngleTrack_Error(reference, feedback);
+  return LADRC_Update(ctrl, continuous_reference, continuous_feedback,
+                       angular_speed);
 }
 
 int LADRC_Init(LADRC_t *ctrl, const volatile LADRC_Params_t *param, float T) {
@@ -49,6 +71,7 @@ void LADRC_Reset(LADRC_t *ctrl, float angle, float angular_speed) {
   ctrl->v1_i = ctrl->v2_i = 0.0f;
   ctrl->z1_i = ctrl->z2_i = ctrl->z3_i = 0.0f;
   ctrl->output = 0.0f;
+  ctrl->deadband_settle_time = 0.0f;
   ctrl->deadband_active = 0U;
 }
 
@@ -57,18 +80,38 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
   if (ctrl == NULL || !isfinite(reference) || !isfinite(feedback)) return 0.0f;
 
   const float rate_feedback = isfinite(angular_speed) ? angular_speed : ctrl->z2;
-  /* Stop building disturbance compensation against stiction once settled.
-   * Exit at 1.5 times the entry angle to avoid noise toggling the gate.
-   * Moving faster than 2 deg/s always resumes measured-rate damping. */
-  const float deadband = ctrl->param.deadband_rad *
-                         (ctrl->deadband_active != 0U ? 1.5f : 1.0f);
-  if (deadband > 0.0f && fabsf(reference - feedback) <= deadband &&
-      isfinite(rate_feedback) && fabsf(rate_feedback) <= 0.03490659f) {
-    LADRC_Reset(ctrl, feedback, 0.0f);
-    ctrl->deadband_active = 1U;
-    return 0.0f;
+  const float abs_error = fabsf(reference - feedback);
+  const float abs_rate = fabsf(rate_feedback);
+
+  /* Deadband is a settled-state hold, not an angle-only output switch.
+   * A moving chassis can repeatedly carry the feedback through zero error;
+   * measured-rate gating keeps derivative braking active during that pass. */
+  if (ctrl->param.deadband_rad > 0.0f) {
+    if (ctrl->deadband_active != 0U) {
+      const uint8_t stay_settled =
+          abs_error <= 1.5f * ctrl->param.deadband_rad &&
+          abs_rate <= LADRC_DEADBAND_EXIT_RATE_RAD_S;
+      if (stay_settled != 0U) {
+        LADRC_Reset(ctrl, feedback, 0.0f);
+        ctrl->deadband_active = 1U;
+        return 0.0f;
+      }
+      ctrl->deadband_active = 0U;
+      ctrl->deadband_settle_time = 0.0f;
+    } else if (abs_error <= ctrl->param.deadband_rad &&
+               abs_rate <= LADRC_DEADBAND_ENTER_RATE_RAD_S) {
+      ctrl->deadband_settle_time += ctrl->T;
+      if (ctrl->deadband_settle_time >= LADRC_DEADBAND_SETTLE_TIME_S) {
+        LADRC_Reset(ctrl, feedback, 0.0f);
+        ctrl->deadband_active = 1U;
+        return 0.0f;
+      }
+    } else {
+      ctrl->deadband_settle_time = 0.0f;
+    }
+  } else {
+    ctrl->deadband_settle_time = 0.0f;
   }
-  ctrl->deadband_active = 0U;
 
   /* LTD: transition the requested angle smoothly. */
   const float fh = -ctrl->param.r * ctrl->param.r * (ctrl->v1 - reference)

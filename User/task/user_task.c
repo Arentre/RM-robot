@@ -85,8 +85,9 @@ const osThreadAttr_t attr_monitor = {
 
 const osThreadAttr_t attr_rc = {
     .name = "rc",
-    .priority = osPriorityRealtime,
-    .stack_size = 128 * 4,
+    /* 串口解析低于 CAN 和姿态任务，栈预留浮点上下文与 HAL 重启接收的调用空间 */
+    .priority = osPriorityHigh,
+    .stack_size = 384 * 4,
 };
 
 const osThreadAttr_t attr_referee = {

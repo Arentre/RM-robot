@@ -43,19 +43,19 @@ void Task_Init(void *argument) {
       osThreadNew(Task_CtrlGimbal, NULL, &attr_ctrl_gimbal);
   task_runtime.thread.can = osThreadNew(Task_Can, NULL, &attr_can);
   task_runtime.thread.info = osThreadNew(Task_Info, NULL, &attr_info);
+  task_runtime.thread.rc = osThreadNew(Task_RC, NULL, &attr_rc);
+  task_runtime.thread.ctrl_chassis =
+      osThreadNew(Task_CtrlChassis, NULL, &attr_ctrl_chassis);
 
 #if 0
   /* 完整机器人任务：当前云台学习工程不启动。 */
   task_runtime.thread.cli = osThreadNew(Task_CLI, NULL, &attr_cli);
   task_runtime.thread.command = osThreadNew(Task_Command, NULL, &attr_command);
-  task_runtime.thread.ctrl_chassis =
-      osThreadNew(Task_CtrlChassis, NULL, &attr_ctrl_chassis);
   task_runtime.thread.ctrl_shoot =
       osThreadNew(Task_CtrlShoot, NULL, &attr_ctrl_shoot);
   task_runtime.thread.monitor = osThreadNew(Task_Monitor, NULL, &attr_monitor);
   task_runtime.thread.referee = osThreadNew(Task_Referee, NULL, &attr_referee);
   task_runtime.thread.ai = osThreadNew(Task_Ai, NULL, &attr_ai);
-  task_runtime.thread.rc = osThreadNew(Task_RC, NULL, &attr_rc);
   task_runtime.thread.cap = osThreadNew(Task_Cap, NULL, &attr_cap);
 #endif
 

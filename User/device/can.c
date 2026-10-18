@@ -93,15 +93,25 @@ void CAN_Tof_Decode(CAN_Tof_t *tof, const uint8_t *raw) {
 }
 
 static void CAN_CAN1RxFifoMsgPendingCallback(void) {
-  HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_1), CAN_MOTOR_RX_FIFO,
-                       &raw_rx1.rx_header, raw_rx1.rx_data);
-  osMessageQueuePut(gcan->msgq_raw, &raw_rx1, 0, 0);
+  if (gcan == NULL) return;
+  if (HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_1), CAN_MOTOR_RX_FIFO,
+                           &raw_rx1.rx_header, raw_rx1.rx_data) != HAL_OK)
+    return;
+  raw_rx1.bus = BSP_CAN_1;
+  raw_rx1.receive_tick = osKernelGetTickCount();
+  if (osMessageQueuePut(gcan->msgq_raw, &raw_rx1, 0, 0) != osOK)
+    gcan->rx_queue_drop_count++;
 }
 
 static void CAN_CAN2RxFifoMsgPendingCallback(void) {
-  HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_2), CAN_CAP_RX_FIFO,
-                       &raw_rx2.rx_header, raw_rx2.rx_data);
-  osMessageQueuePut(gcan->msgq_raw, &raw_rx2, 0, 0);
+  if (gcan == NULL) return;
+  if (HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_2), CAN_CAP_RX_FIFO,
+                           &raw_rx2.rx_header, raw_rx2.rx_data) != HAL_OK)
+    return;
+  raw_rx2.bus = BSP_CAN_2;
+  raw_rx2.receive_tick = osKernelGetTickCount();
+  if (osMessageQueuePut(gcan->msgq_raw, &raw_rx2, 0, 0) != osOK)
+    gcan->rx_queue_drop_count++;
 }
 
 /* Exported functions ------------------------------------------------------- */
@@ -111,8 +121,11 @@ int8_t CAN_Init(CAN_t *can, const CAN_Params_t *param) {
   if ((thread_alert = osThreadGetId()) == NULL) return DEVICE_ERR_NULL;
 
   can->msgq_raw = osMessageQueueNew(32, sizeof(CAN_RawRx_t), NULL);
+  if (can->msgq_raw == NULL) return DEVICE_ERR;
 
   can->param = param;
+  /* Publish before enabling RX interrupts on an already active motor bus. */
+  gcan = can;
 
   CAN_FilterTypeDef can_filter = {0};
 
@@ -152,10 +165,12 @@ int8_t CAN_Init(CAN_t *can, const CAN_Params_t *param) {
 int8_t CAN_Motor_Control(CAN_MotorGroup_t group, CAN_Output_t *output,
                          CAN_t *can) {
   if (output == NULL) return DEVICE_ERR_NULL;
+  if (can == NULL) return DEVICE_ERR_NULL;
 
   int16_t motor1, motor2, motor3, motor4;
   int16_t yaw_motor, pit_motor;
   int16_t fric1_motor, fric2_motor, trig_motor;
+  HAL_StatusTypeDef tx_status = HAL_ERROR;
   switch (group) {
     case CAN_MOTOR_GROUT_CHASSIS:
       motor1 =
@@ -181,9 +196,9 @@ int8_t CAN_Motor_Control(CAN_MotorGroup_t group, CAN_Output_t *output,
       raw_tx.tx_data[6] = (uint8_t)((motor4 >> 8) & 0xFF);
       raw_tx.tx_data[7] = (uint8_t)(motor4 & 0xFF);
 
-      HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->chassis),
-                           &raw_tx.tx_header, raw_tx.tx_data,
-                           &(can->mailbox.chassis));
+      tx_status = HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->chassis),
+                                       &raw_tx.tx_header, raw_tx.tx_data,
+                                       &(can->mailbox.chassis));
       break;
     case CAN_MOTOR_GROUT_GIMBAL1:
     case CAN_MOTOR_GROUT_GIMBAL2:
@@ -205,9 +220,9 @@ int8_t CAN_Motor_Control(CAN_MotorGroup_t group, CAN_Output_t *output,
       raw_tx.tx_data[6] = 0;
       raw_tx.tx_data[7] = 0;
 
-      HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->gimbal),
-                           &raw_tx.tx_header, raw_tx.tx_data,
-                           &(can->mailbox.gimbal));
+      tx_status = HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->gimbal),
+                                       &raw_tx.tx_header, raw_tx.tx_data,
+                                       &(can->mailbox.gimbal));
 			// HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->shoot),
       //                      &raw_tx.tx_header, raw_tx.tx_data,
       //                      &(can->mailbox.gimbal));
@@ -236,20 +251,23 @@ int8_t CAN_Motor_Control(CAN_MotorGroup_t group, CAN_Output_t *output,
       raw_tx.tx_data[6] = 0;
       raw_tx.tx_data[7] = 0;
 
-      HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->shoot),
-                           &raw_tx.tx_header, raw_tx.tx_data,
-                           &(can->mailbox.shoot));
+      tx_status = HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->shoot),
+                                       &raw_tx.tx_header, raw_tx.tx_data,
+                                       &(can->mailbox.shoot));
       break;
 
     default:
-      break;
+      return DEVICE_ERR;
   }
-  return DEVICE_OK;
+  return tx_status == HAL_OK ? DEVICE_OK : DEVICE_ERR;
 }
 
 int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
   if (can == NULL) return DEVICE_ERR_NULL;
   if (can_rx == NULL) return DEVICE_ERR_NULL;
+  if (can_rx->rx_header.IDE != CAN_ID_STD ||
+      can_rx->rx_header.RTR != CAN_RTR_DATA || can_rx->rx_header.DLC != 8U)
+    return DEVICE_ERR;
 
   uint32_t index;
   switch (can_rx->rx_header.StdId) {
@@ -260,6 +278,7 @@ int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
       index = can_rx->rx_header.StdId - CAN_M3508_M1_ID;
       CAN_Motor_Decode(&(can->motor.chassis.as_array[index]), can_rx->rx_data,
                        CAN_M3508_MAX_ABS_CUR);
+      can->chassis_feedback_tick[index] = osKernelGetTickCount();
       can->recive_flag |= 1 << index;
       break;
 
@@ -276,7 +295,10 @@ int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
 
     case CAN_GM6020_YAW_ID:
     case CAN_GM6020_PIT_ID:
+      if (can_rx->bus != can->param->gimbal) return DEVICE_ERR;
       index = can_rx->rx_header.StdId - CAN_GM6020_YAW_ID;
+      can->gimbal_feedback_tick[index] = can_rx->receive_tick;
+      can->gimbal_feedback_count[index]++;
       can->recive_flag |= 1 << (index + 4);
       CAN_Motor_Decode(&(can->motor.gimbal.as_array[index]), can_rx->rx_data,
                        CAN_GM6020_MAX_ABS_CUR);

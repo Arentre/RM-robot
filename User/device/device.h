@@ -31,6 +31,8 @@ extern "C" {
 #define SIGNAL_REFEREE_FAST_REFRESH_UI (1u << 11)
 #define SIGNAL_REFEREE_SLOW_REFRESH_UI (1u << 12)
 
+#define SIGNAL_CRSF_RAW_READY (1u << 13)
+
 #define SIGNAL_AI_RAW_REDY (1u << 14)
 
 #ifdef __cplusplus

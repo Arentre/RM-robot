@@ -14,6 +14,7 @@
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
+#define CHASSIS_FEEDBACK_TIMEOUT_MS (100U)
 /* Private macro ------------------------------------------------------------ */
 /* Private variables -------------------------------------------------------- */
 static CAN_t can;
@@ -34,6 +35,21 @@ static Referee_ChassisUI_t chassis_ui;
 #endif
 
 /* Private function --------------------------------------------------------- */
+static bool ChassisFeedbackOnline(const CAN_t *can_feedback,
+                                  uint32_t now_tick) {
+  if ((can_feedback->recive_flag & CAN_REC_CHASSIS_FINISHED) !=
+      CAN_REC_CHASSIS_FINISHED)
+    return false;
+
+  const uint32_t timeout_tick =
+      CHASSIS_FEEDBACK_TIMEOUT_MS * osKernelGetTickFreq() / 1000U;
+  for (uint8_t i = 0U; i < CAN_MOTOR_CHASSIS_NUM; i++) {
+    if (now_tick - can_feedback->chassis_feedback_tick[i] > timeout_tick)
+      return false;
+  }
+  return true;
+}
+
 /* Exported functions ------------------------------------------------------- */
 
 /**
@@ -68,6 +84,8 @@ void Task_CtrlChassis(void *argument) {
     osMessageQueueGet(task_runtime.msgq.cap_info, &cap, NULL, 0);
     osKernelLock(); /* 锁住RTOS内核防止控制过程中断，造成错误 */
     Chassis_UpdateFeedback(&chassis, &can); /* 更新反馈值 */
+    if (!ChassisFeedbackOnline(&can, osKernelGetTickCount()))
+      chassis_cmd.mode = CHASSIS_MODE_RELAX;
     /* 根据遥控器命令计算底盘输出 */
     Chassis_Control(&chassis, &chassis_cmd, tick);
 		/* PowerLimit_off */

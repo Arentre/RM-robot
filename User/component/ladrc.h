@@ -28,6 +28,7 @@ typedef struct {
   float v1_i, v2_i;   /* previous derivatives for trapezoidal integration */
   float z1_i, z2_i, z3_i;
   float output;       /* saturated output; also LESO's previous input */
+  float deadband_settle_time; /* low-error/low-rate dwell before holding */
   uint8_t deadband_active;
 } LADRC_t;
 
@@ -39,6 +40,9 @@ void LADRC_Reset(LADRC_t *ctrl, float angle, float angular_speed);
  * (radians and radians/second). */
 float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
                    float angular_speed);
+/* Circular angle input with observer/TD position rebasing for repeated turns. */
+float LADRC_UpdateAngle(LADRC_t *ctrl, float reference, float feedback,
+                        float angular_speed);
 
 #ifdef __cplusplus
 }

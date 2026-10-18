@@ -17,7 +17,6 @@
 #include "component\ahrs.h"
 #include "component\pid.h"
 #include "device\bmi088.h"
-#include "device\ist8310.h"
 #include "task\user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
@@ -27,7 +26,6 @@
 
 #ifdef DEBUG
 BMI088_t bmi088;
-IST8310_t ist8310;
 
 AHRS_t gimbal_ahrs;
 AHRS_Eulr_t eulr_to_send;
@@ -35,7 +33,6 @@ AHRS_Eulr_t eulr_to_send;
 KPID_t imu_temp_ctrl_pid;
 #else
 static BMI088_t bmi088;
-static IST8310_t ist8310;
 
 static AHRS_t gimbal_ahrs;
 static AHRS_Eulr_t eulr_to_send;
@@ -44,6 +41,7 @@ static KPID_t imu_temp_ctrl_pid;
 #endif
 
 volatile float gimbal_imu_temperature_c = 0.0f;
+volatile float gimbal_imu_heater_duty = 0.0f;
 
 static const KPID_Params_t imu_temp_ctrl_pid_param = {
     .k = 0.15f,
@@ -53,6 +51,42 @@ static const KPID_Params_t imu_temp_ctrl_pid_param = {
     .i_limit = 1.0f,
     .out_limit = 1.0f,
 };
+
+#define IMU_ACCEL_LOWPASS_CUTOFF_HZ (40.0f)
+#define IMU_CONTROL_GYRO_LOWPASS_CUTOFF_HZ (80.0f)
+#define IMU_TARGET_TEMPERATURE_C (40.0f)
+#define IMU_HEAT_CUTOFF_C (45.0f)
+
+static void AttiEsti_UpdateAccelFilter(AHRS_Accl_t *filtered,
+                                       const AHRS_Accl_t *sample,
+                                       uint8_t *initialised) {
+  if (*initialised == 0U) {
+    *filtered = *sample;
+    *initialised = 1U;
+    return;
+  }
+
+  const float dt = 1.0f / BMI088_GetAcclUpdateFreq(&bmi088);
+  const float rc = 1.0f / (2.0f * M_PI * IMU_ACCEL_LOWPASS_CUTOFF_HZ);
+  const float alpha = dt / (rc + dt);
+  filtered->x += alpha * (sample->x - filtered->x);
+  filtered->y += alpha * (sample->y - filtered->y);
+  filtered->z += alpha * (sample->z - filtered->z);
+}
+
+static void AttiEsti_UpdateGyroFilter(AHRS_Gyro_t *filtered,
+                                      const AHRS_Gyro_t *sample, float alpha,
+                                      uint8_t *initialised) {
+  if (*initialised == 0U) {
+    *filtered = *sample;
+    *initialised = 1U;
+    return;
+  }
+
+  filtered->x += alpha * (sample->x - filtered->x);
+  filtered->y += alpha * (sample->y - filtered->y);
+  filtered->z += alpha * (sample->z - filtered->z);
+}
 
 /* Private function  -------------------------------------------------------- */
 /* Exported functions ------------------------------------------------------- */
@@ -81,23 +115,26 @@ void Task_AttiEsti(void *argument) {
       fabsf(cali->gyro_offset.z) > max_offset)
     cali->gyro_offset.z = 0.0f;
   BMI088_Init(&bmi088, cali);
-  // IST8310_Init(&ist8310, &(task_runtime.cfg.cali.ist8310));
-
-  /* 读取一次磁力计数据，用以初始化姿态解算算法 */
-  // IST8310_WaitNew(osWaitForever);
-  // IST8310_StartDmaRecv();
-  // IST8310_WaitDmaCplt();
-  // IST8310_Parse(&ist8310);
 
   /* 初始化姿态解算算法 */
-  AHRS_Init(&gimbal_ahrs, &ist8310.magn, BMI088_GetUpdateFreq(&bmi088));
+  AHRS_Init(&gimbal_ahrs, BMI088_GetUpdateFreq(&bmi088));
 
   /* 初始化IMU温度控制PID，防止温漂 */
   PID_Init(&imu_temp_ctrl_pid, KPID_MODE_NO_D,
-           1.0f / BMI088_GetUpdateFreq(&bmi088), &imu_temp_ctrl_pid_param);
+           BMI088_GetAcclUpdateFreq(&bmi088), &imu_temp_ctrl_pid_param);
 
-  /* IMU温度控制PWM输出 */
-  BSP_PWM_Start(BSP_PWM_IMU_HEAT);
+  /* Begin warm-up immediately. The first valid temperature sample takes over. */
+  gimbal_imu_heater_duty = 1.0f;
+  BSP_PWM_Set(BSP_PWM_IMU_HEAT, gimbal_imu_heater_duty);
+
+  AHRS_Accl_t filtered_accl = {0.0f, 0.0f, 0.0f};
+  AHRS_Gyro_t control_gyro = {0.0f, 0.0f, 0.0f};
+  uint8_t accel_filter_initialised = 0U;
+  uint8_t gyro_filter_initialised = 0U;
+  const float accel_dt = 1.0f / BMI088_GetAcclUpdateFreq(&bmi088);
+  const float gyro_filter_alpha =
+      1.0f - expf(-M_2PI * IMU_CONTROL_GYRO_LOWPASS_CUTOFF_HZ /
+                  BMI088_GetUpdateFreq(&bmi088));
 
   while (1) {
 #ifdef DEBUG
@@ -105,39 +142,46 @@ void Task_AttiEsti(void *argument) {
     task_runtime.stack_water_mark.atti_esti =
         osThreadGetStackSpace(osThreadGetId());
 #endif
-    /* 等待IMU新数据 */
-    BMI088_WaitNew();
+    const uint32_t flags = BMI088_WaitNew();
+    uint8_t gyro_updated = 0U;
 
-    /* 开始数据接收DMA，加速度计和陀螺仪共用同一个SPI接口，
-     * 一次只能开启一个DMA
-     */
-    BMI088_AcclStartDmaRecv();
-    BMI088_AcclWaitDmaCplt();
+    /* Gyro owns the 1 kHz attitude clock. Read it first because both sensors
+     * share one SPI/DMA channel. */
+    if ((flags & SIGNAL_BMI088_GYRO_NEW_DATA) != 0U) {
+      BMI088_GyroStartDmaRecv();
+      BMI088_GyroWaitDmaCplt();
+      BMI088_ParseGyro(&bmi088);
+      AttiEsti_UpdateGyroFilter(&control_gyro, &bmi088.gyro,
+                                gyro_filter_alpha,
+                                &gyro_filter_initialised);
+      gyro_updated = 1U;
+    }
 
-    BMI088_GyroStartDmaRecv();
-    BMI088_GyroWaitDmaCplt();
+    /* Acceleration and temperature are sampled independently at 800 Hz. */
+    if ((flags & SIGNAL_BMI088_ACCL_NEW_DATA) != 0U) {
+      BMI088_AcclStartDmaRecv();
+      BMI088_AcclWaitDmaCplt();
+      BMI088_ParseAccl(&bmi088);
+      AttiEsti_UpdateAccelFilter(&filtered_accl, &bmi088.accl,
+                                 &accel_filter_initialised);
+      gimbal_imu_temperature_c = bmi088.temp;
+      if (!isfinite(bmi088.temp) || bmi088.temp >= IMU_HEAT_CUTOFF_C) {
+        gimbal_imu_heater_duty = 0.0f;
+        PID_ResetIntegral(&imu_temp_ctrl_pid);
+      } else {
+        gimbal_imu_heater_duty =
+            PID_Calc(&imu_temp_ctrl_pid, IMU_TARGET_TEMPERATURE_C,
+                     bmi088.temp, 0.0f, accel_dt);
+        if (gimbal_imu_heater_duty < 0.0f)
+          gimbal_imu_heater_duty = 0.0f;
+      }
+      BSP_PWM_Set(BSP_PWM_IMU_HEAT, gimbal_imu_heater_duty);
+    }
 
-    /* 磁力计的数据接收频率远小于IMU，
-     * 这里使用非阻塞操作，保证姿态解算实时性
-     */
-    // IST8310_WaitNew(0);
-    // IST8310_StartDmaRecv();
-    // IST8310_WaitDmaCplt();
+    if (gyro_updated == 0U || accel_filter_initialised == 0U) continue;
 
-    /* 锁住RTOS内核防止数据解析过程中断，造成错误 */
-    osKernelLock();
-    /* 接收完所有数据后，把数据从原始字节加工成方便计算的数据 */
-    BMI088_ParseAccl(&bmi088);
-    BMI088_ParseGyro(&bmi088);
-    gimbal_imu_temperature_c = bmi088.temp;
-    // IST8310_Parse(&ist8310);
-
-    /* 根据设备接收到的数据进行姿态解析 */
-    AHRS_Update(&gimbal_ahrs, &bmi088.accl, &bmi088.gyro, &ist8310.magn);
-
-    /* 根据解析出来的四元数计算欧拉角 */
+    AHRS_Update(&gimbal_ahrs, &filtered_accl, &bmi088.gyro);
     AHRS_GetEulr(&eulr_to_send, &gimbal_ahrs);
-    osKernelUnlock();
 
     /* 将需要与其他任务分享的数据放到消息队列中 */
     osMessageQueueReset(task_runtime.msgq.gimbal.accl);
@@ -147,10 +191,7 @@ void Task_AttiEsti(void *argument) {
     osMessageQueueReset(task_runtime.msgq.ai.quat);
     osMessageQueuePut(task_runtime.msgq.ai.quat, &(gimbal_ahrs.quat), 0, 0);
     osMessageQueueReset(task_runtime.msgq.gimbal.gyro);
-    osMessageQueuePut(task_runtime.msgq.gimbal.gyro, &bmi088.gyro, 0, 0);
+    osMessageQueuePut(task_runtime.msgq.gimbal.gyro, &control_gyro, 0, 0);
 
-    /* PID控制IMU温度，PWM输出 */
-    BSP_PWM_Set(BSP_PWM_IMU_HEAT,
-                PID_Calc(&imu_temp_ctrl_pid, 40.0f, bmi088.temp, 0.0f, 0.0f));
   }
 }

@@ -6,6 +6,7 @@
 /* Private typedef ---------------------------------------------------------- */
 /* Private variables -------------------------------------------------------- */
 static void (*UART_Callback[BSP_UART_NUM][BSP_UART_CB_NUM])(void);
+static void (*UART_RxEventCallback[BSP_UART_NUM])(uint16_t size);
 
 /* Private function  -------------------------------------------------------- */
 static BSP_UART_t UART_Get(UART_HandleTypeDef *huart) {
@@ -56,6 +57,13 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
     if (UART_Callback[bsp_uart][BSP_UART_RX_HALF_CPLT_CB]) {
       UART_Callback[bsp_uart][BSP_UART_RX_HALF_CPLT_CB]();
     }
+  }
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
+  BSP_UART_t bsp_uart = UART_Get(huart);
+  if (bsp_uart != BSP_UART_ERR && UART_RxEventCallback[bsp_uart]) {
+    UART_RxEventCallback[bsp_uart](size);
   }
 }
 
@@ -126,5 +134,13 @@ int8_t BSP_UART_RegisterCallback(BSP_UART_t uart, BSP_UART_Callback_t type,
                                  void (*callback)(void)) {
   if (callback == NULL) return BSP_ERR_NULL;
   UART_Callback[uart][type] = callback;
+  return BSP_OK;
+}
+
+int8_t BSP_UART_RegisterRxEventCallback(
+    BSP_UART_t uart, void (*callback)(uint16_t size)) {
+  if (callback == NULL) return BSP_ERR_NULL;
+  if (uart >= BSP_UART_NUM) return BSP_ERR;
+  UART_RxEventCallback[uart] = callback;
   return BSP_OK;
 }

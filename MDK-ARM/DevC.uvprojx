@@ -1520,6 +1520,11 @@
               <FilePath>..\User\device\dr16.c</FilePath>
             </File>
             <File>
+              <FileName>crsf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\device\crsf.c</FilePath>
+            </File>
+            <File>
               <FileName>ist8310.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\device\ist8310.c</FilePath>
@@ -3111,6 +3116,11 @@
               <FileName>dr16.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\device\dr16.c</FilePath>
+            </File>
+            <File>
+              <FileName>crsf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\device\crsf.c</FilePath>
             </File>
             <File>
               <FileName>ist8310.c</FileName>

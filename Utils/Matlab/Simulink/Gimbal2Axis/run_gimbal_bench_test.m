@@ -67,7 +67,7 @@ fprintf('Saved %s and %s\n',csvPath,pngPath);
 end
 
 function [rows, firstMcuTime] = collectPhase(s, duration_s, phase, firstMcuTime)
-rows = zeros(0,42);
+rows = zeros(0,44);
 t0 = tic;
 lastPing = tic;
 lastFrame = tic;
@@ -88,8 +88,10 @@ while toc(t0) < duration_s
     line = strtrim(string(readline(s)));
     if ~startsWith(line,'yaw:'), continue; end
     v = str2double(split(extractAfter(line,4),','));
-    if ~(numel(v) == 35 || numel(v) == 41) || any(~isfinite(v)), continue; end
-    if numel(v) == 35, v(36:41) = NaN; end
+    if ~(numel(v) == 35 || numel(v) == 41 || numel(v) == 43) || ...
+            any(~isfinite(v)), continue; end
+    if numel(v) == 35, v(36:43) = NaN; end
+    if numel(v) == 41, v(42:43) = NaN; end
     lastFrame = tic;
     % A telemetry line already queued before ENABLE may still report Enable=0.
     if phase == 0 && toc(t0) < enableGrace && v(12) == 0, continue; end
@@ -130,6 +132,7 @@ names = {'YawTarget_deg','YawFeedback_deg','YawRate_deg_s','YawError_deg', ...
     'PitchTemp_C','StopReason','YawOrigin_deg','YawTravel_deg', ...
     'YawFrictionFF','GyroX_deg_s','GyroY_deg_s','GyroZ_deg_s', ...
     'AccelX_g','AccelY_g','AccelZ_g'};
+names = [names,{'RollFeedback_deg','BulletSpeed_m_s'}];
 end
 
 function s = getPort(port)

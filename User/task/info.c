@@ -203,7 +203,7 @@ static uint8_t Gimbal_ParseFive(const char *text, float value[5]) {
 }
 
 static void Gimbal_CalibrateGyro(void) {
-  enum { sample_count = 250U };
+  enum { sample_count = 750U };
   const float sample_delay_s = 0.020f;
   const uint32_t sample_delay_ticks =
       (uint32_t)(sample_delay_s * (float)osKernelGetTickFreq()) > 0U
@@ -337,19 +337,21 @@ static void Gimbal_ParseCommand(char *cmd) {
     AHRS_Gyro_t gyro;
     BMI088_Cali_t cali;
     float temperature;
+    float heater_duty;
     osKernelLock();
     gyro = gimbal.feedback.gyro;
     cali = task_runtime.cfg.cali.bmi088;
     temperature = gimbal_imu_temperature_c;
+    heater_duty = gimbal_imu_heater_duty;
     osKernelUnlock();
     BSP_USB_Printf(
         "ack:IMU,temp=%.2f,gyro=%.4f,%.4f,%.4fdeg_s,"
-        "offset=%.5f,%.5f,%.5fdeg_s\r\n",
+        "offset=%.5f,%.5f,%.5fdeg_s,heat=%.3f\r\n",
         temperature, gyro.x * M_RAD2DEG_MULT, gyro.y * M_RAD2DEG_MULT,
         gyro.z * M_RAD2DEG_MULT,
         cali.gyro_offset.x * M_RAD2DEG_MULT,
         cali.gyro_offset.y * M_RAD2DEG_MULT,
-        cali.gyro_offset.z * M_RAD2DEG_MULT);
+        cali.gyro_offset.z * M_RAD2DEG_MULT, heater_duty);
     return;
   }
 
@@ -888,12 +890,16 @@ void Task_Info(void *argument) {
     float accl_z;
     float roll_fb;
     float bullet_speed_mps;
+    uint32_t can_tx_last_success_tick;
+    uint32_t can_tx_failure_count;
+    uint16_t yaw_current_mismatch_count;
+    uint16_t pit_current_mismatch_count;
 
     /* Copy one coherent sample; do not print while the kernel is locked. */
     osKernelLock();
     yaw_sp = gimbal.setpoint.eulr.yaw;
     yaw_fb = gimbal.feedback.eulr.imu.yaw;
-    yaw_rate = gimbal.feedback.gyro.z;
+    yaw_rate = gimbal.feedback.eulr_rate.z;
     pid_angle_err = gimbal.pid[GIMBAL_PID_YAW_ANGLE_IDX].last.err;
     yaw_rate_sp = gimbal.pid[GIMBAL_PID_YAW_ANGLE_IDX].last.out;
     yaw_rate_err = gimbal.pid[GIMBAL_PID_YAW_OMEGA_IDX].last.err;
@@ -908,7 +914,7 @@ void Task_Info(void *argument) {
     }
     pit_sp = gimbal.setpoint.eulr.pit;
     pit_fb = gimbal.feedback.eulr.imu.pit;
-    pit_rate = gimbal.feedback.gyro.y;
+    pit_rate = gimbal.feedback.eulr_rate.y;
     pit_ctrl_angle_err = gimbal.pid[GIMBAL_PID_PIT_ANGLE_IDX].last.err;
     pit_rate_sp = gimbal.pid[GIMBAL_PID_PIT_ANGLE_IDX].last.out;
     pit_rate_err = gimbal.pid[GIMBAL_PID_PIT_OMEGA_IDX].last.err;
@@ -942,7 +948,24 @@ void Task_Info(void *argument) {
     accl_z = gimbal.feedback.accl.z;
     roll_fb = gimbal.feedback.eulr.imu.rol;
     bullet_speed_mps = gimbal_referee_bullet_speed_mps;
+    can_tx_last_success_tick = gimbal_can_tx_health.last_success_tick;
+    can_tx_failure_count = gimbal_can_tx_health.failure_count;
+    yaw_current_mismatch_count =
+        gimbal_actuator_mismatch_count[GIMBAL_ACTR_YAW_IDX];
+    pit_current_mismatch_count =
+        gimbal_actuator_mismatch_count[GIMBAL_ACTR_PIT_IDX];
     osKernelUnlock();
+
+    const uint32_t telemetry_tick = osKernelGetTickCount();
+    const float can_tx_age_ms =
+        (float)(uint32_t)(telemetry_tick - can_tx_last_success_tick) * 1000.0f /
+        (float)osKernelGetTickFreq();
+    const float yaw_current_mismatch_ms =
+        (float)yaw_current_mismatch_count * 1000.0f /
+        (float)TASK_FREQ_CTRL_GIMBAL;
+    const float pit_current_mismatch_ms =
+        (float)pit_current_mismatch_count * 1000.0f /
+        (float)TASK_FREQ_CTRL_GIMBAL;
 
     if (isfinite(yaw_fb)) {
       if (yaw_fb_ready == 0U) {
@@ -975,15 +998,18 @@ void Task_Info(void *argument) {
      * output, encoder angle (0..360 deg), LADRC enable and target valid.
      * Finally: limited Pitch reference (deg), limit active, LADRC output,
      * MCU time (s), actual GM6020 currents (A), temperatures (deg C), stop
-     * reason, Yaw enable origin and travel (deg), then raw BMI088 gyro
+     * reason, Yaw enable origin and travel (deg), then filtered BMI088 gyro
      * x/y/z (deg/s), accelerometer x/y/z (g), roll (deg), and referee bullet
-     * speed (m/s) for the sp_vision_25 host adapter.
+     * speed (m/s) for the sp_vision_25 host adapter. CAN TX age (ms),
+     * cumulative TX failures, and Yaw/Pitch current mismatch duration (ms)
+     * are appended for actuator-path diagnosis.
      */
     BSP_USB_Printf(
         "yaw:%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%u,"
         "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%.6f,%u,%.6f,"
         "%.6f,%.6f,%.6f,%.6f,%.6f,%u,%.6f,%.6f,%.6f,"
-        "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\r\n",
+        "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,"
+        "%.3f,%u,%.3f,%.3f\r\n",
         FireWater_Safe(yaw_sp_continuous), FireWater_Safe(yaw_fb_continuous),
         FireWater_Safe(yaw_rate * M_RAD2DEG_MULT),
         yaw_angle_error,
@@ -1015,7 +1041,10 @@ void Task_Info(void *argument) {
         FireWater_Safe(gyro_z * M_RAD2DEG_MULT),
         FireWater_Safe(accl_x), FireWater_Safe(accl_y), FireWater_Safe(accl_z),
         FireWater_Safe(roll_fb * M_RAD2DEG_MULT),
-        FireWater_Safe(bullet_speed_mps));
+        FireWater_Safe(bullet_speed_mps), FireWater_Safe(can_tx_age_ms),
+        (unsigned int)can_tx_failure_count,
+        FireWater_Safe(yaw_current_mismatch_ms),
+        FireWater_Safe(pit_current_mismatch_ms));
 
     tick += delay_tick;
     osDelayUntil(tick);
