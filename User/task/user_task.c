@@ -61,7 +61,8 @@ const osThreadAttr_t attr_ctrl_chassis = {
 const osThreadAttr_t attr_ctrl_gimbal = {
     .name = "ctrl_gimbal",
     .priority = osPriorityAboveNormal,
-    .stack_size = 256 * 4,
+    /* Debug call chain plus floating-point exception/context margin. */
+    .stack_size = 384 * 4,
 };
 
 const osThreadAttr_t attr_ctrl_shoot = {

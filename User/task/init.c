@@ -8,6 +8,7 @@
 #include "bsp\flash.h"
 #include "bsp\usb.h"
 #include "component\cmd.h"
+#include "component\user_math.h"
 #include "device\bmi088.h"
 #include "device\can.h"
 #include "device\ist8310.h"
@@ -20,6 +21,8 @@
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
+#define GIMBAL_MECH_ZERO_YAW_RAD (180.0f * M_DEG2RAD_MULT)
+#define GIMBAL_MECH_ZERO_PIT_RAD (240.0f * M_DEG2RAD_MULT)
 /* Private macro ------------------------------------------------------------ */
 /* Private variables -------------------------------------------------------- */
 /* Private function --------------------------------------------------------- */
@@ -34,6 +37,9 @@ void Task_Init(void *argument) {
   (void)argument; /* 未使用argument，消除警告 */
 
   Config_Get(&task_runtime.cfg); /* 获取机器人配置 */
+  /* Fixed mechanical encoder zeros for this chassis/gimbal assembly. */
+  task_runtime.cfg.mech_zero.yaw = GIMBAL_MECH_ZERO_YAW_RAD;
+  task_runtime.cfg.mech_zero.pit = GIMBAL_MECH_ZERO_PIT_RAD;
 
   osKernelLock();
   /* 最小云台只需要：姿态解算、CAN、云台控制。 */
@@ -90,6 +96,8 @@ void Task_Init(void *argument) {
   task_runtime.msgq.cmd.referee = osMessageQueueNew(6u, sizeof(CMD_UI_t), NULL);
 
   /* atti_esti */
+  task_runtime.msgq.gimbal.sample =
+      osMessageQueueNew(1u, sizeof(GimbalIMUSample_t), NULL);
   task_runtime.msgq.cmd.raw.rc = osMessageQueueNew(3u, sizeof(CMD_RC_t), NULL);
   task_runtime.msgq.cmd.raw.host =
       osMessageQueueNew(3u, sizeof(CMD_Host_t), NULL);

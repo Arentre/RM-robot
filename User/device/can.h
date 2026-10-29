@@ -247,6 +247,8 @@ typedef struct {
   uint32_t chassis_feedback_tick[CAN_MOTOR_CHASSIS_NUM];
   uint32_t gimbal_feedback_tick[CAN_MOTOR_GIMBAL_NUM];
   uint32_t gimbal_feedback_count[CAN_MOTOR_GIMBAL_NUM];
+  uint32_t gimbal_invalid_feedback_count[CAN_MOTOR_GIMBAL_NUM];
+  uint32_t gimbal_invalid_output_count;
   volatile uint32_t rx_queue_drop_count;
 
   CAN_Motor_t motor;

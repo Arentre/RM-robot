@@ -10,6 +10,7 @@
 /* Includes ----------------------------------------------------------------- */
 #include <math.h>
 
+#include "component\gimbal_safety.h"
 #include "module\gimbal.h"
 #include "task\user_task.h"
 
@@ -46,10 +47,16 @@ volatile uint8_t gimbal_yaw_chirp_down = 0U;
 volatile uint32_t gimbal_yaw_chirp_start_tick = 0U;
 volatile uint16_t gimbal_actuator_mismatch_count[GIMBAL_ACTR_NUM] = {0U, 0U};
 volatile GimbalProtectionStatus_t gimbal_protection_status;
+volatile GimbalFaultSnapshot_t gimbal_fault_snapshot;
+static GimbalIMUSample_t imu_sample;
+static uint8_t imu_seen;
+static float previous_pitch;
+static uint32_t previous_imu_tick;
+static uint32_t invalid_output_count_seen;
 static uint16_t actuator_startup_count;
 static uint16_t gyro_overrate_count;
 
-#define GIMBAL_BINARY_TRAJECTORY_TIMEOUT_TICKS (125U) /* 250 ms at 500 Hz */
+#define GIMBAL_BINARY_TRAJECTORY_TIMEOUT_MS (250U)
 #define GIMBAL_CAN_TX_TIMEOUT_MS (100U)
 #define GIMBAL_CAN_RX_TIMEOUT_MS (150U)
 #define GIMBAL_CURRENT_COMMAND_MIN_A (0.60f)
@@ -119,15 +126,19 @@ static uint8_t Gimbal_GyroRateUnsafe(const AHRS_Gyro_t *gyro) {
 static void Gimbal_UpdateLinkStatus(uint32_t now) {
   const uint32_t freq = osKernelGetTickFreq();
   gimbal_protection_status.tx_age_ms =
-      (uint32_t)(now - gimbal_can_tx_health.last_success_tick) * 1000U / freq;
+      GimbalSafety_AgeMs(now, gimbal_can_tx_health.last_success_tick, freq);
   for (uint8_t i = 0U; i < GIMBAL_ACTR_NUM; i++) {
     gimbal_protection_status.feedback_count[i] = can.gimbal_feedback_count[i];
     gimbal_protection_status.feedback_age_ms[i] =
         can.gimbal_feedback_count[i] != 0U
-            ? (uint32_t)(now - can.gimbal_feedback_tick[i]) * 1000U / freq
+            ? GimbalSafety_AgeMs(now, can.gimbal_feedback_tick[i], freq)
             : UINT32_MAX;
   }
   gimbal_protection_status.rx_queue_drop_count = can.rx_queue_drop_count;
+  gimbal_protection_status.imu_age_ms = imu_seen != 0U
+      ? GimbalSafety_AgeMs(now, imu_sample.gyro_tick, freq) : UINT32_MAX;
+  gimbal_protection_status.accl_age_ms = imu_seen != 0U
+      ? GimbalSafety_AgeMs(now, imu_sample.accl_tick, freq) : UINT32_MAX;
 }
 
 static uint8_t Gimbal_CANRxUnsafe(void) {
@@ -198,6 +209,44 @@ static void Gimbal_TargetDisableLocked(void) {
   gimbal_target_input.revision++;
 }
 
+static void Gimbal_TripLocked(uint8_t reason, uint32_t now) {
+  gimbal_test_stop_reason = reason;
+  gimbal_protection_status.last_reason = reason;
+  gimbal_protection_status.trip_count++;
+  remote_gimbal_fault_latched = 1U;
+  gimbal_protection_status.fault_latched = 1U;
+  gimbal_fault_snapshot.reason = reason;
+  gimbal_fault_snapshot.tick = now;
+  gimbal_fault_snapshot.link = gimbal_protection_status;
+  gimbal_fault_snapshot.can_esr = gimbal_can_tx_health.bus_esr;
+  gimbal_fault_snapshot.can_tsr = gimbal_can_tx_health.tx_status_register;
+  gimbal_fault_snapshot.output_age_ms = gimbal_can_tx_health.output_age_ms;
+  gimbal_fault_snapshot.imu_io_error_count = gimbal_imu_io_error_count;
+  gimbal_fault_snapshot.invalid_output_count = can.gimbal_invalid_output_count;
+  gimbal_fault_snapshot.pitch_control_enabled = gimbal_ladrc_pit_enable;
+  gimbal_fault_snapshot.serial_control_active = gimbal_serial_control_active;
+  gimbal_fault_snapshot.attitude = gimbal.feedback.eulr.imu;
+  gimbal_fault_snapshot.gyro = gimbal.feedback.gyro;
+  gimbal_fault_snapshot.previous_pitch = previous_pitch;
+  gimbal_fault_snapshot.pitch_target = gimbal.setpoint.eulr.pit;
+  for (uint8_t i = 0U; i < GIMBAL_ACTR_NUM; i++) {
+    gimbal_fault_snapshot.output[i] = gimbal.out[i];
+    gimbal_fault_snapshot.current[i] =
+        can.motor.gimbal.as_array[i].torque_current;
+    gimbal_fault_snapshot.temperature[i] = can.motor.gimbal.as_array[i].temp;
+    gimbal_fault_snapshot.invalid_feedback_count[i] =
+        can.gimbal_invalid_feedback_count[i];
+    gimbal_fault_snapshot.mismatch_count[i] = gimbal_actuator_mismatch_count[i];
+  }
+  gimbal_test_enable = 0U;
+  gimbal_serial_control_active = 0U;
+  gimbal_yaw_chirp_active = 0U;
+  Gimbal_TargetDisableLocked();
+  gimbal_cmd.mode = GIMBAL_MODE_RELAX;
+  AHRS_ResetEulr(&gimbal_cmd.delta_eulr);
+  Gimbal_ActuatorGuardReset();
+}
+
 /* Exported functions ------------------------------------------------------- */
 
 /**
@@ -222,12 +271,16 @@ void Task_CtrlGimbal(void *argument) {
   /* 等待电机反馈和IMU数据就绪后再开启控制。 */
   osMessageQueueGet(task_runtime.msgq.can.feedback.gimbal, &can, NULL,
                     osWaitForever);
-  osMessageQueueGet(task_runtime.msgq.gimbal.eulr_imu,
-                    &(gimbal.feedback.eulr.imu), NULL, osWaitForever);
-  osMessageQueueGet(task_runtime.msgq.gimbal.accl, &(gimbal.feedback.accl),
-                    NULL, osWaitForever);
-  osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
-                    NULL, osWaitForever);
+  /* Allow cold-start sensor setup before treating missing IMU as a fault. */
+  if (osMessageQueueGet(task_runtime.msgq.gimbal.sample, &imu_sample, NULL,
+                        osKernelGetTickFreq()) == osOK) {
+    imu_seen = 1U;
+    previous_pitch = imu_sample.eulr.pit;
+    previous_imu_tick = imu_sample.gyro_tick;
+    gimbal.feedback.eulr.imu = imu_sample.eulr;
+    gimbal.feedback.gyro = imu_sample.gyro;
+    gimbal.feedback.accl = imu_sample.accl;
+  }
   uint32_t tick = osKernelGetTickCount(); /* 控制任务运行频率的计时 */
   GimbalTargetInput_t target = {0};
   while (1) {
@@ -239,12 +292,8 @@ void Task_CtrlGimbal(void *argument) {
 
     osMessageQueueGet(task_runtime.msgq.can.feedback.gimbal, &can, NULL, 0);
     /* 读取控制指令、姿态、IMU数据 */
-    osMessageQueueGet(task_runtime.msgq.gimbal.eulr_imu,
-                      &(gimbal.feedback.eulr.imu), NULL, 0);
-    osMessageQueueGet(task_runtime.msgq.gimbal.accl, &(gimbal.feedback.accl),
-                      NULL, 0);
-    osMessageQueueGet(task_runtime.msgq.gimbal.gyro, &(gimbal.feedback.gyro),
-                      NULL, 0);
+    const uint8_t imu_updated = osMessageQueueGet(
+        task_runtime.msgq.gimbal.sample, &imu_sample, NULL, 0) == osOK;
     CMD_GimbalCmd_t received_remote_cmd;
     if (osMessageQueueGet(task_runtime.msgq.cmd.gimbal,
                           &received_remote_cmd, NULL, 0) == osOK) {
@@ -258,6 +307,19 @@ void Task_CtrlGimbal(void *argument) {
     }
     osKernelLock(); /* 锁住RTOS内核防止控制过程中断，造成错误 */
     const uint32_t control_now = osKernelGetTickCount();
+    uint8_t pitch_jump = 0U;
+    if (imu_updated != 0U) {
+      if (imu_seen != 0U &&
+          GimbalSafety_AgeMs(imu_sample.gyro_tick, previous_imu_tick,
+                             osKernelGetTickFreq()) <= GIMBAL_IMU_TIMEOUT_MS)
+        pitch_jump = GimbalSafety_PitchJump(previous_pitch, imu_sample.eulr.pit,
+            (uint32_t)(imu_sample.gyro_tick - previous_imu_tick),
+            osKernelGetTickFreq());
+      gimbal.feedback.eulr.imu = imu_sample.eulr;
+      gimbal.feedback.accl = imu_sample.accl;
+      gimbal.feedback.gyro = imu_sample.gyro;
+      imu_seen = 1U;
+    }
     Gimbal_UpdateFeedback(&gimbal, &can);
     Gimbal_UpdateLinkStatus(control_now);
 
@@ -307,9 +369,13 @@ void Task_CtrlGimbal(void *argument) {
     } else {
       const uint32_t remote_timeout_tick =
           (GIMBAL_REMOTE_TIMEOUT_MS * osKernelGetTickFreq() + 999U) / 1000U;
-      if ((uint32_t)(osKernelGetTickCount() - remote_gimbal_update_tick) >
-          remote_timeout_tick)
+      if ((uint32_t)(control_now - remote_gimbal_update_tick) >
+          remote_timeout_tick) {
+        if (remote_gimbal_cmd.mode == GIMBAL_MODE_ABSOLUTE &&
+            remote_gimbal_fault_latched == 0U)
+          Gimbal_TripLocked(GIMBAL_TEST_STOP_REMOTE_TIMEOUT, control_now);
         remote_gimbal_cmd.mode = GIMBAL_MODE_RELAX;
+      }
       gimbal_cmd = remote_gimbal_cmd;
       AHRS_ResetEulr(&remote_gimbal_cmd.delta_eulr);
       enable = gimbal_cmd.mode == GIMBAL_MODE_ABSOLUTE &&
@@ -323,17 +389,49 @@ void Task_CtrlGimbal(void *argument) {
       if (serial_control_active != 0U &&
           stop_reason == GIMBAL_TEST_STOP_NONE &&
           target.trajectory_active != 0U &&
-          (uint32_t)(control_now - target.update_tick) >
-              GIMBAL_BINARY_TRAJECTORY_TIMEOUT_TICKS)
+          GimbalSafety_AgeMs(control_now, target.update_tick,
+                             osKernelGetTickFreq()) >
+              GIMBAL_BINARY_TRAJECTORY_TIMEOUT_MS)
         stop_reason = GIMBAL_TEST_STOP_TIMEOUT;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+               (gimbal_protection_status.imu_age_ms > GIMBAL_IMU_TIMEOUT_MS ||
+                gimbal_protection_status.accl_age_ms > GIMBAL_IMU_TIMEOUT_MS))
+        stop_reason = GIMBAL_TEST_STOP_IMU_TIMEOUT;
       else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
           (!isfinite(gimbal.feedback.eulr.imu.yaw) ||
           !isfinite(gimbal.feedback.eulr.imu.pit) ||
           !isfinite(gimbal.feedback.eulr.imu.rol) ||
           !isfinite(gimbal.feedback.gyro.x) ||
           !isfinite(gimbal.feedback.gyro.y) ||
-           !isfinite(gimbal.feedback.gyro.z)))
+           !isfinite(gimbal.feedback.gyro.z) ||
+           fabsf(gimbal.feedback.eulr.imu.pit) > 1.5718f ||
+           fabsf(gimbal.feedback.eulr.imu.yaw) > 3.1426f ||
+           fabsf(gimbal.feedback.eulr.imu.rol) > 3.1426f ||
+           fabsf(gimbal.feedback.gyro.x) > 21.0f ||
+           fabsf(gimbal.feedback.gyro.y) > 21.0f ||
+           fabsf(gimbal.feedback.gyro.z) > 21.0f))
         stop_reason = GIMBAL_TEST_STOP_INVALID_FEEDBACK;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE && pitch_jump != 0U)
+        stop_reason = GIMBAL_TEST_STOP_FEEDBACK_JUMP;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+               can.gimbal_invalid_output_count != invalid_output_count_seen)
+        stop_reason = GIMBAL_TEST_STOP_INVALID_OUTPUT;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+               (!isfinite(gimbal_cmd.delta_eulr.yaw) ||
+                !isfinite(gimbal_cmd.delta_eulr.pit) ||
+                fabsf(gimbal_cmd.delta_eulr.yaw) > 0.25f ||
+                fabsf(gimbal_cmd.delta_eulr.pit) > 0.15f ||
+                (gimbal.mode == GIMBAL_MODE_ABSOLUTE &&
+                 (!isfinite(gimbal.setpoint.eulr.yaw) ||
+                  !isfinite(gimbal.setpoint.eulr.pit)))))
+        stop_reason = GIMBAL_TEST_STOP_INVALID_TARGET;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+               (gimbal_can_tx_health.bus_esr & CAN_ESR_BOFF) != 0U)
+        stop_reason = GIMBAL_TEST_STOP_CAN_BUS_OFF;
+      else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
+               gimbal.mode == GIMBAL_MODE_ABSOLUTE &&
+               gimbal_can_tx_health.output_age_ms > 50U)
+        stop_reason = GIMBAL_TEST_STOP_CONTROL_TIMEOUT;
       else if (stop_reason == GIMBAL_TEST_STOP_NONE &&
                Gimbal_CANTxUnsafe(control_now) != 0U)
         stop_reason = GIMBAL_TEST_STOP_CAN_TX;
@@ -366,25 +464,13 @@ void Task_CtrlGimbal(void *argument) {
       }
 
       if (stop_reason != GIMBAL_TEST_STOP_NONE) {
-        if (serial_control_active != 0U) {
-          gimbal_test_enable = 0U;
-          gimbal_serial_control_active = 0U;
-          gimbal_yaw_chirp_active = 0U;
-          Gimbal_TargetDisableLocked();
-        } else {
-          remote_gimbal_fault_latched = 1U;
-        }
-        gimbal_test_stop_reason = stop_reason;
-        gimbal_protection_status.last_reason = stop_reason;
-        gimbal_protection_status.trip_count++;
+        Gimbal_TripLocked(stop_reason, control_now);
         enable = 0U;
-        gimbal_cmd.mode = GIMBAL_MODE_RELAX;
-        Gimbal_ActuatorGuardReset();
       }
     } else {
       Gimbal_ActuatorGuardReset();
     }
-    if (serial_control_active != 0U &&
+    if (enable != 0U && serial_control_active != 0U &&
         gimbal.mode == GIMBAL_MODE_ABSOLUTE) {
       const float elapsed = target.trajectory_active != 0U
                                 ? (float)(control_now - target.update_tick) /
@@ -408,13 +494,31 @@ void Task_CtrlGimbal(void *argument) {
         gimbal.setpoint.eulr.pit = pitch_target;
       }
     }
-    Gimbal_Control(&gimbal, &gimbal_cmd, tick);
+    Gimbal_Control(&gimbal, &gimbal_cmd, control_now);
+    if (enable != 0U &&
+        (!GimbalSafety_OutputValid(gimbal.out[GIMBAL_ACTR_YAW_IDX],
+                                    gimbal.out[GIMBAL_ACTR_PIT_IDX]) ||
+         !isfinite(gimbal.setpoint.eulr.yaw) ||
+         !isfinite(gimbal.setpoint.eulr.pit))) {
+      Gimbal_TripLocked(GIMBAL_TEST_STOP_INVALID_OUTPUT, control_now);
+      Gimbal_Control(&gimbal, &gimbal_cmd, control_now);
+      enable = 0U;
+    }
+    if (enable == 0U) {
+      gimbal.out[GIMBAL_ACTR_YAW_IDX] = 0.0f;
+      gimbal.out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
+    }
     if (enable != 0U && gimbal_serial_control_active != 0U) {
       if (gimbal_ladrc_pit_enable == 0U)
         gimbal.out[GIMBAL_ACTR_PIT_IDX] = 0.0f;
     }
     Gimbal_DumpOutput(&gimbal, &gimbal_out);
     gimbal_protection_status.fault_latched = remote_gimbal_fault_latched;
+    invalid_output_count_seen = can.gimbal_invalid_output_count;
+    if (imu_updated != 0U) {
+      previous_pitch = imu_sample.eulr.pit;
+      previous_imu_tick = imu_sample.gyro_tick;
+    }
 
     osKernelUnlock();
     osMessageQueueReset(task_runtime.msgq.can.output.gimbal);
@@ -425,6 +529,9 @@ void Task_CtrlGimbal(void *argument) {
     osMessageQueuePut(task_runtime.msgq.ui.gimbal, &gimbal_ui, 0, 0);
 
     tick += delay_tick; /* 计算下一个唤醒时刻 */
+    /* A late task must not issue a burst of catch-up control cycles. */
+    if ((int32_t)(tick - osKernelGetTickCount()) <= 0)
+      tick = osKernelGetTickCount() + delay_tick;
     osDelayUntil(tick); /* 运行结束，等待下一次唤醒 */
   }
 }

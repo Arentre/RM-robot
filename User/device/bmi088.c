@@ -166,8 +166,10 @@ static uint8_t BMI_ReadSingle(BMI_Device_t dv, uint8_t reg) {
   }
 }
 
-static void BMI_Read(BMI_Device_t dv, uint8_t reg, uint8_t *data, uint8_t len) {
-  if (data == NULL) return;
+static int8_t BMI_Read(BMI_Device_t dv, uint8_t reg, uint8_t *data, uint8_t len) {
+  if (data == NULL) return DEVICE_ERR_NULL;
+  /* Clear old completion bits before asserting either chip select. */
+  osThreadFlagsClear(SIGNAL_BMI088_ACCL_RAW_REDY | SIGNAL_BMI088_GYRO_RAW_REDY);
 
   switch (dv) {
     case BMI_ACCL:
@@ -179,8 +181,25 @@ static void BMI_Read(BMI_Device_t dv, uint8_t reg, uint8_t *data, uint8_t len) {
       break;
   }
   buffer[0] = (uint8_t)(reg | 0x80);
-  HAL_SPI_Transmit(BSP_SPI_GetHandle(BSP_SPI_IMU), buffer, 1u, 20u);
-  HAL_SPI_Receive_DMA(BSP_SPI_GetHandle(BSP_SPI_IMU), data, len);
+  if (HAL_SPI_Transmit(BSP_SPI_GetHandle(BSP_SPI_IMU), buffer, 1u, 2u) == HAL_OK &&
+      HAL_SPI_Receive_DMA(BSP_SPI_GetHandle(BSP_SPI_IMU), data, len) == HAL_OK)
+    return DEVICE_OK;
+  HAL_SPI_Abort(BSP_SPI_GetHandle(BSP_SPI_IMU));
+  BMI088_ACCL_NSS_SET();
+  BMI088_GYRO_NSS_SET();
+  return DEVICE_ERR;
+}
+
+static uint32_t BMI088_WaitDma(uint32_t completion) {
+  const uint32_t timeout = (5U * osKernelGetTickFreq() + 999U) / 1000U;
+  const uint32_t flags = osThreadFlagsWait(completion, osFlagsWaitAll, timeout);
+  if ((flags & osFlagsError) != 0U) {
+    HAL_SPI_Abort(BSP_SPI_GetHandle(BSP_SPI_IMU));
+    BMI088_ACCL_NSS_SET();
+    BMI088_GYRO_NSS_SET();
+    osThreadFlagsClear(SIGNAL_BMI088_ACCL_RAW_REDY | SIGNAL_BMI088_GYRO_RAW_REDY);
+  }
+  return flags;
 }
 
 static void BMI088_RxCpltCallback(void) {
@@ -288,23 +307,20 @@ uint32_t BMI088_WaitNew() {
 }
 
 int8_t BMI088_AcclStartDmaRecv() {
-  BMI_Read(BMI_ACCL, BMI088_REG_ACCL_X_LSB, bmi088_rxbuf, BMI088_LEN_RX_BUFF);
-  return DEVICE_OK;
+  return BMI_Read(BMI_ACCL, BMI088_REG_ACCL_X_LSB, bmi088_rxbuf,
+                  BMI088_LEN_RX_BUFF);
 }
 
 uint32_t BMI088_AcclWaitDmaCplt() {
-  return osThreadFlagsWait(SIGNAL_BMI088_ACCL_RAW_REDY, osFlagsWaitAll,
-                           osWaitForever);
+  return BMI088_WaitDma(SIGNAL_BMI088_ACCL_RAW_REDY);
 }
 
 int8_t BMI088_GyroStartDmaRecv() {
-  BMI_Read(BMI_GYRO, BMI088_REG_GYRO_X_LSB, bmi088_rxbuf + 7, 6u);
-  return DEVICE_OK;
+  return BMI_Read(BMI_GYRO, BMI088_REG_GYRO_X_LSB, bmi088_rxbuf + 7, 6u);
 }
 
 uint32_t BMI088_GyroWaitDmaCplt() {
-  return osThreadFlagsWait(SIGNAL_BMI088_GYRO_RAW_REDY, osFlagsWaitAll,
-                           osWaitForever);
+  return BMI088_WaitDma(SIGNAL_BMI088_GYRO_RAW_REDY);
 }
 
 int8_t BMI088_ParseAccl(BMI088_t *bmi088) {

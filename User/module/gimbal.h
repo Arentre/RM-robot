@@ -54,7 +54,7 @@ enum Gimbal_Acuator_e {
 typedef enum {
   GIMBAL_TEST_STOP_NONE = 0,
   GIMBAL_TEST_STOP_COMMAND = 1,
-  GIMBAL_TEST_STOP_TIMEOUT = 2, /* Reserved legacy code; no serial timeout. */
+  GIMBAL_TEST_STOP_TIMEOUT = 2, /* Serial trajectory timeout. */
   GIMBAL_TEST_STOP_YAW_TRAVEL = 3, /* Reserved legacy code; no travel stop. */
   GIMBAL_TEST_STOP_RATE = 4,       /* Body gyro norm exceeded safe range. */
   GIMBAL_TEST_STOP_INVALID_FEEDBACK = 5,
@@ -64,6 +64,12 @@ typedef enum {
   GIMBAL_TEST_STOP_CAN_TX = 9,
   GIMBAL_TEST_STOP_ACTUATOR_CURRENT = 10,
   GIMBAL_TEST_STOP_CAN_RX = 11,
+  GIMBAL_TEST_STOP_IMU_TIMEOUT = 12,
+  GIMBAL_TEST_STOP_FEEDBACK_JUMP = 13,
+  GIMBAL_TEST_STOP_INVALID_OUTPUT = 14,
+  GIMBAL_TEST_STOP_REMOTE_TIMEOUT = 15,
+  GIMBAL_TEST_STOP_CONTROL_TIMEOUT = 16,
+  GIMBAL_TEST_STOP_CAN_BUS_OFF = 17,
 } Gimbal_TestStopReason_e;
 
 /* Keil Watch diagnostics. Last reason survives CH5 disarm/rearm. */
@@ -75,9 +81,37 @@ typedef struct {
   uint32_t feedback_age_ms[GIMBAL_ACTR_NUM];
   uint32_t feedback_count[GIMBAL_ACTR_NUM];
   uint32_t rx_queue_drop_count;
+  uint32_t imu_age_ms;
+  uint32_t accl_age_ms;
 } GimbalProtectionStatus_t;
 
 extern volatile GimbalProtectionStatus_t gimbal_protection_status;
+
+/* Frozen BEFORE outputs are zeroed. Updated only on a new protection trip;
+ * disarming/rearming and live telemetry never erase the evidence. */
+typedef struct {
+  uint32_t reason;
+  uint32_t tick;
+  GimbalProtectionStatus_t link;
+  uint32_t can_esr;
+  uint32_t can_tsr;
+  uint32_t output_age_ms;
+  uint32_t imu_io_error_count;
+  uint32_t invalid_feedback_count[GIMBAL_ACTR_NUM];
+  uint32_t invalid_output_count;
+  uint32_t pitch_control_enabled;
+  uint32_t serial_control_active;
+  uint32_t mismatch_count[GIMBAL_ACTR_NUM];
+  AHRS_Eulr_t attitude;
+  AHRS_Gyro_t gyro;
+  float previous_pitch;
+  float pitch_target;
+  float output[GIMBAL_ACTR_NUM];
+  float current[GIMBAL_ACTR_NUM];
+  float temperature[GIMBAL_ACTR_NUM];
+} GimbalFaultSnapshot_t;
+
+extern volatile GimbalFaultSnapshot_t gimbal_fault_snapshot;
 
 /* 云台参数的结构体，包含所有初始化用的参数，通常是const，存好几组。*/
 typedef struct {

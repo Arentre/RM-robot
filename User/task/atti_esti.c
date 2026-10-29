@@ -42,6 +42,7 @@ static KPID_t imu_temp_ctrl_pid;
 
 volatile float gimbal_imu_temperature_c = 0.0f;
 volatile float gimbal_imu_heater_duty = 0.0f;
+volatile uint32_t gimbal_imu_io_error_count = 0U;
 
 static const KPID_Params_t imu_temp_ctrl_pid_param = {
     .k = 0.15f,
@@ -114,7 +115,11 @@ void Task_AttiEsti(void *argument) {
   if (!isfinite(cali->gyro_offset.z) ||
       fabsf(cali->gyro_offset.z) > max_offset)
     cali->gyro_offset.z = 0.0f;
-  BMI088_Init(&bmi088, cali);
+  if (BMI088_Init(&bmi088, cali) != DEVICE_OK) {
+    gimbal_imu_io_error_count++;
+    /* No valid sample will be published; the control watchdog blocks enable. */
+    osThreadExit();
+  }
 
   /* 初始化姿态解算算法 */
   AHRS_Init(&gimbal_ahrs, BMI088_GetUpdateFreq(&bmi088));
@@ -131,6 +136,8 @@ void Task_AttiEsti(void *argument) {
   AHRS_Gyro_t control_gyro = {0.0f, 0.0f, 0.0f};
   uint8_t accel_filter_initialised = 0U;
   uint8_t gyro_filter_initialised = 0U;
+  GimbalIMUSample_t sample;
+  memset(&sample, 0, sizeof(sample));
   const float accel_dt = 1.0f / BMI088_GetAcclUpdateFreq(&bmi088);
   const float gyro_filter_alpha =
       1.0f - expf(-M_2PI * IMU_CONTROL_GYRO_LOWPASS_CUTOFF_HZ /
@@ -143,14 +150,23 @@ void Task_AttiEsti(void *argument) {
         osThreadGetStackSpace(osThreadGetId());
 #endif
     const uint32_t flags = BMI088_WaitNew();
+    if ((flags & osFlagsError) != 0U) {
+      gimbal_imu_io_error_count++;
+      osDelay(1U);
+      continue;
+    }
     uint8_t gyro_updated = 0U;
 
     /* Gyro owns the 1 kHz attitude clock. Read it first because both sensors
      * share one SPI/DMA channel. */
     if ((flags & SIGNAL_BMI088_GYRO_NEW_DATA) != 0U) {
-      BMI088_GyroStartDmaRecv();
-      BMI088_GyroWaitDmaCplt();
-      BMI088_ParseGyro(&bmi088);
+      if (BMI088_GyroStartDmaRecv() != DEVICE_OK ||
+          (BMI088_GyroWaitDmaCplt() & osFlagsError) != 0U ||
+          BMI088_ParseGyro(&bmi088) != DEVICE_OK) {
+        gimbal_imu_io_error_count++;
+        continue;
+      }
+      sample.gyro_tick = osKernelGetTickCount();
       AttiEsti_UpdateGyroFilter(&control_gyro, &bmi088.gyro,
                                 gyro_filter_alpha,
                                 &gyro_filter_initialised);
@@ -159,9 +175,13 @@ void Task_AttiEsti(void *argument) {
 
     /* Acceleration and temperature are sampled independently at 800 Hz. */
     if ((flags & SIGNAL_BMI088_ACCL_NEW_DATA) != 0U) {
-      BMI088_AcclStartDmaRecv();
-      BMI088_AcclWaitDmaCplt();
-      BMI088_ParseAccl(&bmi088);
+      if (BMI088_AcclStartDmaRecv() != DEVICE_OK ||
+          (BMI088_AcclWaitDmaCplt() & osFlagsError) != 0U ||
+          BMI088_ParseAccl(&bmi088) != DEVICE_OK) {
+        gimbal_imu_io_error_count++;
+        continue;
+      }
+      sample.accl_tick = osKernelGetTickCount();
       AttiEsti_UpdateAccelFilter(&filtered_accl, &bmi088.accl,
                                  &accel_filter_initialised);
       gimbal_imu_temperature_c = bmi088.temp;
@@ -180,8 +200,17 @@ void Task_AttiEsti(void *argument) {
 
     if (gyro_updated == 0U || accel_filter_initialised == 0U) continue;
 
-    AHRS_Update(&gimbal_ahrs, &filtered_accl, &bmi088.gyro);
-    AHRS_GetEulr(&eulr_to_send, &gimbal_ahrs);
+    if (AHRS_Update(&gimbal_ahrs, &filtered_accl, &bmi088.gyro) != 0 ||
+        AHRS_GetEulr(&eulr_to_send, &gimbal_ahrs) != 0) {
+      gimbal_imu_io_error_count++;
+      continue;
+    }
+
+    sample.eulr = eulr_to_send;
+    sample.gyro = control_gyro;
+    sample.accl = bmi088.accl;
+    osMessageQueueReset(task_runtime.msgq.gimbal.sample);
+    osMessageQueuePut(task_runtime.msgq.gimbal.sample, &sample, 0, 0);
 
     /* 将需要与其他任务分享的数据放到消息队列中 */
     osMessageQueueReset(task_runtime.msgq.gimbal.accl);

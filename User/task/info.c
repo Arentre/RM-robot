@@ -313,6 +313,51 @@ static void Gimbal_CalibrateGyro(void) {
 }
 
 /* Bench commands are ASCII lines terminated by CR or LF. */
+static void Gimbal_PrintFault(void) {
+  GimbalFaultSnapshot_t fault;
+  GimbalProtectionStatus_t live;
+  osKernelLock();
+  fault = gimbal_fault_snapshot;
+  live = gimbal_protection_status;
+  osKernelUnlock();
+  BSP_USB_Printf(
+      "ack:FAULT,reason=%lu,tick=%lu,trips=%lu,latched=%lu,"
+      "imu_ms=%lu,acc_ms=%lu,rx_ms=%lu/%lu,tx_ms=%lu,out_ms=%lu,"
+      "esr=0x%08lX,tsr=0x%08lX,drop=%lu,imu_err=%lu,"
+      "bad_rx=%lu/%lu,bad_out=%lu,pitch_en=%lu,serial=%lu,mismatch=%lu/%lu,"
+      "pit_deg=%.3f,prev_deg=%.3f,target_deg=%.3f,"
+      "gyro=%.3f/%.3f/%.3f,out=%.4f/%.4f,"
+      "current=%.4f/%.4f,temp=%.1f/%.1f,"
+      "live_imu_ms=%lu,live_acc_ms=%lu,live_rx_ms=%lu/%lu\r\n",
+      (unsigned long)fault.reason, (unsigned long)fault.tick,
+      (unsigned long)live.trip_count, (unsigned long)live.fault_latched,
+      (unsigned long)fault.link.imu_age_ms,
+      (unsigned long)fault.link.accl_age_ms,
+      (unsigned long)fault.link.feedback_age_ms[0],
+      (unsigned long)fault.link.feedback_age_ms[1],
+      (unsigned long)fault.link.tx_age_ms, (unsigned long)fault.output_age_ms,
+      (unsigned long)fault.can_esr, (unsigned long)fault.can_tsr,
+      (unsigned long)fault.link.rx_queue_drop_count,
+      (unsigned long)fault.imu_io_error_count,
+      (unsigned long)fault.invalid_feedback_count[0],
+      (unsigned long)fault.invalid_feedback_count[1],
+      (unsigned long)fault.invalid_output_count,
+      (unsigned long)fault.pitch_control_enabled,
+      (unsigned long)fault.serial_control_active,
+      (unsigned long)fault.mismatch_count[0],
+      (unsigned long)fault.mismatch_count[1],
+      fault.attitude.pit * M_RAD2DEG_MULT,
+      fault.previous_pitch * M_RAD2DEG_MULT,
+      fault.pitch_target * M_RAD2DEG_MULT,
+      fault.gyro.x, fault.gyro.y, fault.gyro.z,
+      fault.output[0], fault.output[1], fault.current[0], fault.current[1],
+      fault.temperature[0], fault.temperature[1],
+      (unsigned long)live.imu_age_ms, (unsigned long)live.accl_age_ms,
+      (unsigned long)live.feedback_age_ms[0],
+      (unsigned long)live.feedback_age_ms[1]);
+  return;
+}
+
 static void Gimbal_ParseCommand(char *cmd) {
   /* Command names are case insensitive; numeric exponents also accept E. */
   for (char *p = cmd; *p != '\0'; ++p) {
@@ -457,6 +502,11 @@ static void Gimbal_ParseCommand(char *cmd) {
     gimbal_ladrc_pit_enable = 1U;
     osKernelUnlock();
     BSP_USB_Printf("ack:PITCH=1\r\n");
+    return;
+  }
+
+  if (strcmp(cmd, "FAULT") == 0) {
+    Gimbal_PrintFault();
     return;
   }
 

@@ -27,7 +27,7 @@ static CMD_GimbalCmd_t rc_gimbal_cmd;
 /* 固定归一化旋转速度，可在此调整；CH8（SC）仅选择方向。 */
 #define CHASSIS_TEST_ROTATION_SPEED (2.75f)
 /* 底盘排查：置 0 禁用遥控自旋，保留左摇杆平移。 */
-#define CHASSIS_TEST_ROTATION_ENABLE (0U)
+#define CHASSIS_TEST_ROTATION_ENABLE (1U)
 #define GIMBAL_TEST_YAW_RATE_RAD_S (4.0f)
 #define GIMBAL_TEST_PITCH_RATE_RAD_S (2.0f)
 #define GIMBAL_TEST_DT_MAX_S (0.05f)
@@ -42,8 +42,10 @@ static void RC_BuildChassisCommand(const CMD_RC_t *rc,
     return;
   }
 
-  /* SC 三段开关（CH8）决定 Z 轴旋转方向：低位负转、中位停止、高位正转 */
-  command->mode = CHASSIS_MODE_INDENPENDENT;
+  /* SC three-position switch: center follows gimbal; end positions spin. */
+  command->mode = rc->sw_l == CMD_SW_MID
+                      ? CHASSIS_MODE_FOLLOW_GIMBAL
+                      : CHASSIS_MODE_INDENPENDENT;
   command->ctrl_vec.vx = -rc->ch_l_y * CHASSIS_TEST_INPUT_SCALE;
   command->ctrl_vec.vy = rc->ch_l_x * CHASSIS_TEST_INPUT_SCALE;
   float rotation_direction = 0.0f;

@@ -7,11 +7,13 @@
 #include "can.h"
 
 #include <stdbool.h>
+#include <math.h>
 #include <string.h>
 
 #include "bsp\can.h"
 #include "bsp\mm.h"
 #include "component\user_math.h"
+#include "component\gimbal_safety.h"
 #include "device\referee.h"
 
 /* Private define ----------------------------------------------------------- */
@@ -202,6 +204,13 @@ int8_t CAN_Motor_Control(CAN_MotorGroup_t group, CAN_Output_t *output,
       break;
     case CAN_MOTOR_GROUT_GIMBAL1:
     case CAN_MOTOR_GROUT_GIMBAL2:
+      /* Reject the entire pair before any float-to-integer conversion. */
+      if (!GimbalSafety_OutputValid(output->gimbal.named.yaw,
+                                    output->gimbal.named.pit)) {
+        output->gimbal.named.yaw = 0.0f;
+        output->gimbal.named.pit = 0.0f;
+        can->gimbal_invalid_output_count++;
+      }
       yaw_motor =
           (int16_t)(output->gimbal.named.yaw * (float)CAN_GM6020_MAX_ABS_LSB);
       pit_motor =
@@ -297,6 +306,13 @@ int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
     case CAN_GM6020_PIT_ID:
       if (can_rx->bus != can->param->gimbal) return DEVICE_ERR;
       index = can_rx->rx_header.StdId - CAN_GM6020_YAW_ID;
+      /* CRC protects the wire, not a bad producer or corrupted RAM. A bad
+       * encoder payload must not refresh the feedback watchdog. */
+      if (((uint16_t)can_rx->rx_data[0] << 8 | can_rx->rx_data[1]) >=
+          CAN_MOTOR_ENC_RES) {
+        can->gimbal_invalid_feedback_count[index]++;
+        return DEVICE_ERR;
+      }
       can->gimbal_feedback_tick[index] = can_rx->receive_tick;
       can->gimbal_feedback_count[index]++;
       can->recive_flag |= 1 << (index + 4);

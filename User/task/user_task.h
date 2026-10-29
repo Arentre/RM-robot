@@ -43,6 +43,17 @@ typedef struct {
 
 extern GimbalCANTxHealth_t gimbal_can_tx_health;
 
+/* One queue item binds attitude/rate to the actual sensor acquisition times. */
+typedef struct {
+  AHRS_Eulr_t eulr;
+  AHRS_Gyro_t gyro;
+  AHRS_Accl_t accl;
+  uint32_t gyro_tick;
+  uint32_t accl_tick;
+} GimbalIMUSample_t;
+
+extern volatile uint32_t gimbal_imu_io_error_count;
+
 /* Exported defines --------------------------------------------------------- */
 /* Exported macro ----------------------------------------------------------- */
 /* Exported types ----------------------------------------------------------- */
@@ -89,6 +100,7 @@ typedef struct {
       osMessageQueueId_t accl;     /* IMU读取 */
       osMessageQueueId_t gyro;     /* IMU读取 */
       osMessageQueueId_t eulr_imu; /* 姿态解算得到 */
+      osMessageQueueId_t sample;   /* Coherent, timestamped control feedback. */
     } gimbal;
 
     /* 控制指令 */
