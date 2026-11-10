@@ -20,16 +20,8 @@ extern "C" {
 #define SIGNAL_BMI088_ACCL_RAW_REDY (1u << 3)
 
 #define SIGNAL_CAN_MOTOR_RECV (1u << 4)
-#define SIGNAL_CAN_UWB_RECV (1u << 5)
-#define SIGNAL_CAN_CAP_RECV (1u << 6)
 
-#define SIGNAL_DR16_RAW_REDY (1u << 7)
-#define SIGNAL_IST8310_MAGN_NEW_DATA (1u << 8)
-#define SIGNAL_IST8310_MAGN_RAW_REDY (1u << 9)
 
-#define SIGNAL_REFEREE_RAW_REDY (1u << 10)
-#define SIGNAL_REFEREE_FAST_REFRESH_UI (1u << 11)
-#define SIGNAL_REFEREE_SLOW_REFRESH_UI (1u << 12)
 
 #define SIGNAL_CRSF_RAW_READY (1u << 13)
 

@@ -3,10 +3,10 @@
 */
 
 /* Includes ----------------------------------------------------------------- */
-#include "device\ai.h"
+#include "device/ai.h"
 
-#include "bsp\usb.h"
-#include "task\user_task.h"
+#include "bsp/usb.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
@@ -16,12 +16,10 @@
 AI_t ai;
 CMD_Host_t cmd_host;
 AHRS_Quaternion_t quat;
-Referee_ForAI_t referee_ai;
 #else
 static AI_t ai;
 static CMD_Host_t cmd_host;
 static AHRS_Quaternion_t quat;
-static Referee_ForAI_t referee_ai;
 #endif
 
 /* Private function --------------------------------------------------------- */
@@ -66,13 +64,10 @@ void Task_Ai(void *argument) {
 
     osMessageQueueGet(task_runtime.msgq.ai.quat, &(quat), NULL, 0);
     osMessageQueueGet(task_runtime.msgq.cmd.ai, &(ai.status), NULL, 0);
-    bool ref_update = (osMessageQueueGet(task_runtime.msgq.referee.ai,
-                                         &(referee_ai), NULL, 0) == osOK);
-    
-    AI_PackMCU(&ai, &quat);
-    if (ref_update) AI_PackRef(&ai, &(referee_ai));
 
-    AI_StartSend(&(ai), ref_update);
+    AI_PackMCU(&ai, &quat);
+
+    AI_StartSend(&ai);
 
     osDelayUntil(tick);
   }

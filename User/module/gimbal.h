@@ -9,16 +9,15 @@ extern "C" {
 #endif
 
 /* Includes ----------------------------------------------------------------- */
-#include "component\ahrs.h"
+#include "component/ahrs.h"
 #include "component/angle_track.h"
-#include "component\cmd.h"
-#include "component\filter.h"
-#include "component\gimbal_ff.h"
-#include "component\ladrc.h"
-#include "component\pid.h"
-#include "device\bmi088.h"
-#include "device\can.h"
-#include "device\referee.h"
+#include "component/cmd.h"
+#include "component/filter.h"
+#include "component/gimbal_ff.h"
+#include "component/ladrc.h"
+#include "component/pid.h"
+#include "device/bmi088.h"
+#include "device/can.h"
 
 /* Exported constants ------------------------------------------------------- */
 #define GIMBAL_OK (0)        /* 运行正常 */
@@ -267,13 +266,6 @@ void Gimbal_DumpOutput(Gimbal_t *g, CAN_GimbalOutput_t *out);
  */
 void Gimbal_ResetOutput(CAN_GimbalOutput_t *output);
 
-/**
- * @brief 导出云台UI数据
- *
- * @param g 云台结构体
- * @param ui UI结构体
- */
-void Gimbal_DumpUI(const Gimbal_t *g, Referee_GimbalUI_t *ui);
 #ifdef __cplusplus
 }
 #endif

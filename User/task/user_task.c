@@ -3,7 +3,7 @@
 */
 
 /* Includes ----------------------------------------------------------------- */
-#include "task\user_task.h"
+#include "task/user_task.h"
 
 /* 机器人运行时的数据 */
 Task_Runtime_t task_runtime;
@@ -31,18 +31,6 @@ const osThreadAttr_t attr_can = {
     .name = "can",
     .priority = osPriorityRealtime,
     /* ArmClang debug call chain: 572 bytes, plus exception/context frames. */
-    .stack_size = 256 * 4,
-};
-
-const osThreadAttr_t attr_cap = {
-    .name = "cap",
-    .priority = osPriorityHigh,
-    .stack_size = 128 * 4,
-};
-
-const osThreadAttr_t attr_cli = {
-    .name = "cli",
-    .priority = osPriorityNormal,
     .stack_size = 256 * 4,
 };
 
@@ -78,12 +66,6 @@ const osThreadAttr_t attr_info = {
     .stack_size = 1024 * 4,
 };
 
-const osThreadAttr_t attr_monitor = {
-    .name = "monitor",
-    .priority = osPriorityBelowNormal,
-    .stack_size = 128 * 4,
-};
-
 const osThreadAttr_t attr_rc = {
     .name = "rc",
     /* 串口解析低于 CAN 和姿态任务，栈预留浮点上下文与 HAL 重启接收的调用空间 */
@@ -91,8 +73,3 @@ const osThreadAttr_t attr_rc = {
     .stack_size = 384 * 4,
 };
 
-const osThreadAttr_t attr_referee = {
-    .name = "referee",
-    .priority = osPriorityRealtime,
-    .stack_size = 512 * 4,
-};

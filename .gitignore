@@ -3,3 +3,12 @@ MathWorks/
 Utils/Matlab/Simulink/Gimbal2Axis/matlab_prefs_temp/
 Utils/Matlab/Simulink/Gimbal2Axis/slprj/
 Utils/Matlab/Simulink/Gimbal2Axis/*.slxc
+
+# CMake / CLion generated build files
+/build/
+/cmake-build-*/
+/CMakeUserPresets.json
+compile_commands.json
+
+# clangd background index
+/.cache/

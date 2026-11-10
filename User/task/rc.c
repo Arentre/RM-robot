@@ -3,8 +3,8 @@
 /* Includes ----------------------------------------------------------------- */
 #include <string.h>
 
-#include "device\crsf.h"
-#include "task\user_task.h"
+#include "device/crsf.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */

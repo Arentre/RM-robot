@@ -3,7 +3,7 @@
 
   接收机器人的控制指令。
 
-  从DR16中接收数据，转换为通用的CMD_RC_t控制信号。
+  从 CRSF 遥控任务接收数据，转换为通用的CMD_RC_t控制信号。
   根据CMD_RC_t计算最终命令CMD_t。
   把计算好的CMD_t细分后放到对应的消息队列中。
   超时未收到则认为是丢控等特殊情况，把CMD_RC_t中的内容置零，
@@ -13,8 +13,7 @@
 /* Includes ----------------------------------------------------------------- */
 #include <string.h>
 
-#include "device\dr16.h"
-#include "task\user_task.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
@@ -84,15 +83,6 @@ void Task_Command(void *argument) {
     osMessageQueueReset(task_runtime.msgq.cmd.shoot);
     osMessageQueuePut(task_runtime.msgq.cmd.shoot, &(cmd.shoot), 0, 0);
 
-    osMessageQueueReset(task_runtime.msgq.ui.cmd);
-    osMessageQueuePut(task_runtime.msgq.ui.cmd, &cmd.pc_ctrl, 0, 0);
-
-    /* 存在裁判系统发送命令时，将相应的画图命令放入消息队列中 */
-    while (cmd.referee.counter > 0) {
-      osMessageQueuePut(task_runtime.msgq.cmd.referee,
-                        &(cmd.referee.cmd[--cmd.referee.counter]), 0, 0);
-      cmd.referee.cmd[cmd.referee.counter] = CMD_UI_NOTHING;
-    }
     osDelayUntil(tick); /* 运行结束，等待下一次唤醒 */
   }
 }

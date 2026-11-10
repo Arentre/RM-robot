@@ -28,7 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include "tim.h"
 
-#include "task\user_task.h"
+#include "task/user_task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,7 +61,7 @@ volatile char stack_overflow_task_name[configMAX_TASK_NAME_LEN];
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 256 * 4, /* USB init needs 408 bytes before context frames. */
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 

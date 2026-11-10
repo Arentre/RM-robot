@@ -1,0 +1,10 @@
+# Use the same ARM compiler arguments as the firmware build.
+CompileFlags:
+  CompilationDatabase: build/Debug
+  Remove: [-fstack-usage]
+Index:
+  Background: Build
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  Designators: Yes

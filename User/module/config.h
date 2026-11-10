@@ -11,13 +11,12 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "component\cmd.h"
-#include "device\bmi088.h"
-#include "device\can.h"
-#include "device\ist8310.h"
-#include "module\chassis.h"
-#include "module\gimbal.h"
-#include "module\shoot.h"
+#include "component/cmd.h"
+#include "device/bmi088.h"
+#include "device/can.h"
+#include "module/chassis.h"
+#include "module/gimbal.h"
+#include "module/shoot.h"
 
 /* 机器人参数，保存后不会变化 */
 typedef struct {
@@ -42,7 +41,7 @@ typedef struct {
   const Config_PilotCfg_t *pilot_cfg;
 
   struct {
-    IST8310_Cali_t ist8310;
+    float reserved_magnetometer[6]; /* Legacy Flash layout: do not remove. */
     BMI088_Cali_t bmi088;
   } cali; /* 校准 */
 

@@ -336,7 +336,7 @@
               <MiscControls>-Wall -Wextra</MiscControls>
               <Define>USE_HAL_DRIVER,DEV_BOARD_C,STM32F407xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;..\Drivers\CMSIS\DSP\Include;..\User;..\Middlewares\Third_Party\Protocol</IncludePath>
+              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;..\User;..\Middlewares\Third_Party\Protocol</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1430,11 +1430,6 @@
               <FilePath>..\User\component\ballistics.c</FilePath>
             </File>
             <File>
-              <FileName>capacity.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\component\capacity.c</FilePath>
-            </File>
-            <File>
               <FileName>cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\component\cmd.c</FilePath>
@@ -1489,16 +1484,6 @@
               <FileType>1</FileType>
               <FilePath>..\User\component\user_math.c</FilePath>
             </File>
-            <File>
-              <FileName>FreeRTOS_CLI.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\component\FreeRTOS_CLI.c</FilePath>
-            </File>
-            <File>
-              <FileName>ui.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\component\ui.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -1515,24 +1500,9 @@
               <FilePath>..\User\device\can.c</FilePath>
             </File>
             <File>
-              <FileName>dr16.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\device\dr16.c</FilePath>
-            </File>
-            <File>
               <FileName>crsf.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\device\crsf.c</FilePath>
-            </File>
-            <File>
-              <FileName>ist8310.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\device\ist8310.c</FilePath>
-            </File>
-            <File>
-              <FileName>referee.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\device\referee.c</FilePath>
             </File>
             <File>
               <FileName>ai.c</FileName>
@@ -1545,11 +1515,6 @@
           <GroupName>User/module</GroupName>
           <Files>
             <File>
-              <FileName>cap.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\module\cap.c</FilePath>
-            </File>
-            <File>
               <FileName>chassis.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\module\chassis.c</FilePath>
@@ -1558,6 +1523,11 @@
               <FileName>config.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\module\config.c</FilePath>
+            </File>
+            <File>
+              <FileName>control_params.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\module\control_params.c</FilePath>
             </File>
             <File>
               <FileName>gimbal.c</FileName>
@@ -1590,16 +1560,6 @@
               <FilePath>..\User\task\can.c</FilePath>
             </File>
             <File>
-              <FileName>cap.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\cap.c</FilePath>
-            </File>
-            <File>
-              <FileName>cli.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\cli.c</FilePath>
-            </File>
-            <File>
               <FileName>command.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\task\command.c</FilePath>
@@ -1630,19 +1590,9 @@
               <FilePath>..\User\task\init.c</FilePath>
             </File>
             <File>
-              <FileName>monitor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\monitor.c</FilePath>
-            </File>
-            <File>
               <FileName>rc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\task\rc.c</FilePath>
-            </File>
-            <File>
-              <FileName>referee.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\referee.c</FilePath>
             </File>
             <File>
               <FileName>user_task.c</FileName>
@@ -1984,7 +1934,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,DEV_BOARD_C,STM32F407xx,DEBUG</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;..\Drivers\CMSIS\DSP\Include;..\User;..\Middlewares\Third_Party\Protocol</IncludePath>
+              <IncludePath>../Core/Inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;..\User;..\Middlewares\Third_Party\Protocol</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -3028,11 +2978,6 @@
               <FilePath>..\User\component\ballistics.c</FilePath>
             </File>
             <File>
-              <FileName>capacity.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\component\capacity.c</FilePath>
-            </File>
-            <File>
               <FileName>cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\component\cmd.c</FilePath>
@@ -3087,16 +3032,6 @@
               <FileType>1</FileType>
               <FilePath>..\User\component\user_math.c</FilePath>
             </File>
-            <File>
-              <FileName>FreeRTOS_CLI.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\component\FreeRTOS_CLI.c</FilePath>
-            </File>
-            <File>
-              <FileName>ui.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\component\ui.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -3113,24 +3048,9 @@
               <FilePath>..\User\device\can.c</FilePath>
             </File>
             <File>
-              <FileName>dr16.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\device\dr16.c</FilePath>
-            </File>
-            <File>
               <FileName>crsf.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\device\crsf.c</FilePath>
-            </File>
-            <File>
-              <FileName>ist8310.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\device\ist8310.c</FilePath>
-            </File>
-            <File>
-              <FileName>referee.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\device\referee.c</FilePath>
             </File>
             <File>
               <FileName>ai.c</FileName>
@@ -3143,11 +3063,6 @@
           <GroupName>User/module</GroupName>
           <Files>
             <File>
-              <FileName>cap.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\module\cap.c</FilePath>
-            </File>
-            <File>
               <FileName>chassis.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\module\chassis.c</FilePath>
@@ -3156,6 +3071,11 @@
               <FileName>config.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\module\config.c</FilePath>
+            </File>
+            <File>
+              <FileName>control_params.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\module\control_params.c</FilePath>
             </File>
             <File>
               <FileName>gimbal.c</FileName>
@@ -3188,16 +3108,6 @@
               <FilePath>..\User\task\can.c</FilePath>
             </File>
             <File>
-              <FileName>cap.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\cap.c</FilePath>
-            </File>
-            <File>
-              <FileName>cli.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\cli.c</FilePath>
-            </File>
-            <File>
               <FileName>command.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\task\command.c</FilePath>
@@ -3228,19 +3138,9 @@
               <FilePath>..\User\task\init.c</FilePath>
             </File>
             <File>
-              <FileName>monitor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\monitor.c</FilePath>
-            </File>
-            <File>
               <FileName>rc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User\task\rc.c</FilePath>
-            </File>
-            <File>
-              <FileName>referee.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\User\task\referee.c</FilePath>
             </File>
             <File>
               <FileName>user_task.c</FileName>

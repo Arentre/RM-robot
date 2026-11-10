@@ -6,16 +6,10 @@
 #include "shoot.h"
 
 #include "bsp/pwm.h"
-#include "component\limiter.h"
-#include "component\user_math.h"
+#include "component/limiter.h"
+#include "component/user_math.h"
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
-
-#define HEAT_INCREASE_42MM (100.f) /* 每发射一颗42mm弹丸增加100热量 */
-#define HEAT_INCREASE_17MM (10.f)  /* 每发射一颗17mm弹丸增加10热量 */
-
-#define BULLET_SPEED_LIMIT_42MM (16.0)
-#define BULLET_SPEED_LIMIT_17MM (25.0)
 
 /* Private macro ------------------------------------------------------------ */
 /* Private variables -------------------------------------------------------- */
@@ -53,50 +47,6 @@ static int8_t Shoot_SetMode(Shoot_t *s, CMD_ShootMode_t mode) {
   if (mode == SHOOT_MODE_LOADED) s->fire_ctrl.to_shoot = 0;
 
   s->mode = mode;
-  return 0;
-}
-
-/**
- * @brief
- *
- * @param s
- * @param s_ref
- * @return int8_t
- */
-static int8_t Shoot_HeatLimit(Shoot_t *s, Referee_ForShoot_t *s_ref) {
-  Shoot_HeatCtrl_t *hc = &(s->heat_ctrl);
-  /* 当裁判系统在线时启用热量控制与射速控制 */
-  if (s_ref->ref_status == REF_STATUS_RUNNING) {
-    /* 根据机器人型号获得对应数据 */
-    if (s->param->model == SHOOT_MODEL_42MM) {
-      hc->heat = s_ref->power_heat.shoot_42_heat;
-      hc->heat_limit = s_ref->robot_status.shooter_heat_limit;
-      hc->speed_limit = BULLET_SPEED_LIMIT_42MM;
-      hc->cooling_rate = s_ref->robot_status.shooter_cooling_value;
-      hc->heat_increase = HEAT_INCREASE_42MM;
-    } else if (s->param->model == SHOOT_MODEL_17MM) {
-      hc->heat = s_ref->power_heat.shoot_id1_17_heat;
-      hc->heat_limit = s_ref->robot_status.shooter_heat_limit;
-      hc->speed_limit = BULLET_SPEED_LIMIT_17MM;
-      hc->cooling_rate = s_ref->robot_status.shooter_cooling_value;
-      hc->heat_increase = HEAT_INCREASE_17MM;
-    }
-    /* 检测热量更新后,计算可发射弹丸 */
-    if ((hc->heat != hc->last_heat) || (hc->heat == 0)) {
-      hc->available_shot =
-          (uint32_t)floorf((hc->heat_limit - hc->heat) / hc->heat_increase) - 2;
-      hc->last_heat = hc->heat;
-    }
-    /* 计算已发射弹丸 */
-    if (s_ref->shoot_data.bullet_speed != hc->last_bullet_speed) {
-      hc->last_bullet_speed = s_ref->shoot_data.bullet_speed;
-    }
-    s->fire_ctrl.bullet_speed = hc->speed_limit;
-  } else {
-    /* 裁判系统离线，不启用热量控制 */
-    hc->available_shot = 10;
-    s->fire_ctrl.bullet_speed = s->param->bullet_speed;
-  }
   return 0;
 }
 
@@ -174,19 +124,20 @@ int8_t Shoot_UpdateFeedback(Shoot_t *s, const CAN_t *can) {
  *
  * @param s 包含射击数据的结构体
  * @param s_cmd 射击控制指令
- * @param s_ref 射击使用的裁判系统数据
  * @param now 现在时刻
  * @return int8_t
  */
 int8_t Shoot_Control(Shoot_t *s, CMD_ShootCmd_t *s_cmd,
-                     Referee_ForShoot_t *s_ref, uint32_t now) {
+                     uint32_t now) {
   if (s == NULL) return -1;
 
   s->dt = (float)(now - s->lask_wakeup) / 1000.0f;
   s->lask_wakeup = now;
 
   Shoot_SetMode(s, s_cmd->mode); /* 设置射击模式 */
-  Shoot_HeatLimit(s, s_ref);     /* 热量控制 */
+  /* Standalone mechanism: preserve the previous referee-offline behavior. */
+  s->heat_ctrl.available_shot = 10;
+  s->fire_ctrl.bullet_speed = s->param->bullet_speed;
   /* 根据开火模式计算发射行为 */
   s->fire_ctrl.fire_mode = s_cmd->fire_mode;
   int32_t max_burst;
@@ -334,15 +285,4 @@ void Shoot_ResetOutput(CAN_ShootOutput_t *output) {
   for (i = 0; i < 3; i++) {
     output->as_array[i] = 0.0f;
   }
-}
-
-/**
- * @brief 导出射击UI数据
- *
- * @param s 射击结构体
- * @param ui UI结构体
- */
-void Shoot_DumpUI(Shoot_t *s, Referee_ShootUI_t *ui) {
-  ui->mode = s->mode;
-  ui->fire = s->fire_ctrl.fire_mode;
 }

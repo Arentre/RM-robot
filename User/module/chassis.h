@@ -9,12 +9,11 @@ extern "C" {
 #endif
 
 /* Includes ----------------------------------------------------------------- */
-#include "component\cmd.h"
-#include "component\filter.h"
-#include "component\mixer.h"
-#include "component\pid.h"
-#include "device\can.h"
-#include "device\referee.h"
+#include "component/cmd.h"
+#include "component/filter.h"
+#include "component/mixer.h"
+#include "component/pid.h"
+#include "device/can.h"
 
 /* Exported constants ------------------------------------------------------- */
 #define CHASSIS_OK (0)        /* 运行正常 */
@@ -150,12 +149,9 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
  * @brief 底盘功率限制
  *
  * @param c 底盘数据
- * @param cap 电容数据
- * @param ref 裁判系统数据
  * @return 函数运行结果
  */
-int8_t Chassis_PowerLimit(Chassis_t *c, const CAN_Capacitor_t *cap,
-                          const Referee_ForChassis_t *ref);
+int8_t Chassis_PowerLimit(Chassis_t *c);
 
 /**
  * \brief 复制底盘输出值
@@ -171,14 +167,6 @@ void Chassis_DumpOutput(Chassis_t *c, CAN_ChassisOutput_t *out);
  * \param out CAN设备底盘输出结构体
  */
 void Chassis_ResetOutput(CAN_ChassisOutput_t *out);
-
-/**
- * @brief 导出底盘数据
- *
- * @param chassis 底盘数据结构体
- * @param ui UI数据结构体
- */
-void Chassis_DumpUI(const Chassis_t *c, Referee_ChassisUI_t *ui);
 
 #ifdef __cplusplus
 }

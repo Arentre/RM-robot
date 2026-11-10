@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "RM-C: configure Debug",
+      "type": "process",
+      "command": "${config:cmake.cmakePath}",
+      "args": [
+        "--preset",
+        "Debug"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/opt/ST/STM32CubeCLT_1.22.0/Ninja/bin:${env:PATH}"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RM-C: build Debug",
+      "type": "process",
+      "command": "${config:cmake.cmakePath}",
+      "args": [
+        "--build",
+        "--preset",
+        "Debug",
+        "--parallel",
+        "8"
+      ],
+      "dependsOn": "RM-C: configure Debug",
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "RM-C: rebuild Debug",
+      "type": "process",
+      "command": "${config:cmake.cmakePath}",
+      "args": [
+        "--build",
+        "--preset",
+        "Debug",
+        "--clean-first",
+        "--parallel",
+        "8"
+      ],
+      "dependsOn": "RM-C: configure Debug",
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "RM-C: configure Release",
+      "type": "process",
+      "command": "${config:cmake.cmakePath}",
+      "args": [
+        "--preset",
+        "Release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/opt/ST/STM32CubeCLT_1.22.0/Ninja/bin:${env:PATH}"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RM-C: build Release",
+      "type": "process",
+      "command": "${config:cmake.cmakePath}",
+      "args": [
+        "--build",
+        "--preset",
+        "Release",
+        "--parallel",
+        "8"
+      ],
+      "dependsOn": "RM-C: configure Release",
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "RM-C: list DFU devices",
+      "type": "process",
+      "command": "/opt/homebrew/bin/dfu-util",
+      "args": [
+        "--list",
+        "--device",
+        "0483:df11"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "RM-C: flash Debug via DFU",
+      "type": "process",
+      "command": "/opt/homebrew/bin/dfu-util",
+      "args": [
+        "--device",
+        "0483:df11",
+        "--alt",
+        "0",
+        "--dfuse-address",
+        "0x08000000:leave",
+        "--download",
+        "${workspaceFolder}/build/Debug/DevC.bin"
+      ],
+      "dependsOn": "RM-C: build Debug",
+      "dependsOrder": "sequence",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}

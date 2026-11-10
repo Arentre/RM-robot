@@ -7,12 +7,12 @@ AI
 
 #include <string.h>
 
-#include "bsp\delay.h"
-#include "bsp\uart.h"
-#include "component\crc16.h"
-#include "component\crc8.h"
-#include "component\user_math.h"
-#include "component\filter.h"
+#include "bsp/delay.h"
+#include "bsp/uart.h"
+#include "component/crc16.h"
+#include "component/crc8.h"
+#include "component/user_math.h"
+#include "component/filter.h"
 
 
 /* Private define ----------------------------------------------------------- */
@@ -123,30 +123,14 @@ int8_t AI_PackMCU(AI_t *ai, const AHRS_Quaternion_t *quat) {
   return DEVICE_OK;
 }
 
-int8_t AI_PackRef(AI_t *ai, const Referee_ForAI_t *ref) {
-  (void)ref;
-  ai->to_host.ref.id = AI_ID_REF;
-  ai->to_host.ref.package.crc16 = CRC16_Calc(
-      (const uint8_t *)&(ai->to_host.ref.package),
-      sizeof(ai->to_host.ref.package) - sizeof(uint16_t), CRC16_INIT);
-  return DEVICE_OK;
-}
 
-int8_t AI_StartSend(AI_t *ai, bool ref_update) {
-  if (ref_update) {
-    if (HAL_UART_Transmit_DMA(
-            BSP_UART_GetHandle(BSP_UART_AI), (uint8_t *)&(ai->to_host),
-            sizeof(ai->to_host.ref) + sizeof(ai->to_host.mcu)) == HAL_OK)
-      return DEVICE_OK;
-    else
-      return DEVICE_ERR;
-  } else {
-    if (HAL_UART_Transmit_DMA(BSP_UART_GetHandle(BSP_UART_AI),
-                              (uint8_t *)&(ai->to_host.mcu),
-                              sizeof(ai->to_host.mcu)) == HAL_OK)
-      return DEVICE_OK;
-    else
-      return DEVICE_ERR;
-  }
-}
 
+
+
+
+/* Referee forwarding was removed; MCU attitude packets retain their wire format. */
+int8_t AI_StartSend(AI_t *ai) {
+  return HAL_UART_Transmit_DMA(BSP_UART_GetHandle(BSP_UART_AI),
+      (uint8_t *)&ai->to_host.mcu, sizeof(ai->to_host.mcu)) == HAL_OK
+      ? DEVICE_OK : DEVICE_ERR;
+}

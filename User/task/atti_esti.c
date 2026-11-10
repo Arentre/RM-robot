@@ -11,13 +11,14 @@
 #include <math.h>
 #include <string.h>
 
-#include "bsp\mm.h"
-#include "bsp\pwm.h"
-#include "bsp\usb.h"
-#include "component\ahrs.h"
-#include "component\pid.h"
-#include "device\bmi088.h"
-#include "task\user_task.h"
+#include "bsp/mm.h"
+#include "bsp/pwm.h"
+#include "bsp/usb.h"
+#include "component/ahrs.h"
+#include "component/pid.h"
+#include "module/control_params.h"
+#include "device/bmi088.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
@@ -43,15 +44,6 @@ static KPID_t imu_temp_ctrl_pid;
 volatile float gimbal_imu_temperature_c = 0.0f;
 volatile float gimbal_imu_heater_duty = 0.0f;
 volatile uint32_t gimbal_imu_io_error_count = 0U;
-
-static const KPID_Params_t imu_temp_ctrl_pid_param = {
-    .k = 0.15f,
-    .p = 1.0f,
-    .i = 0.0f,
-    .d = 0.0f,
-    .i_limit = 1.0f,
-    .out_limit = 1.0f,
-};
 
 #define IMU_ACCEL_LOWPASS_CUTOFF_HZ (40.0f)
 #define IMU_CONTROL_GYRO_LOWPASS_CUTOFF_HZ (80.0f)
@@ -209,18 +201,12 @@ void Task_AttiEsti(void *argument) {
     sample.eulr = eulr_to_send;
     sample.gyro = control_gyro;
     sample.accl = bmi088.accl;
+    osMessageQueueReset(task_runtime.msgq.ai.quat);
+    osMessageQueuePut(task_runtime.msgq.ai.quat, &gimbal_ahrs.quat, 0, 0);
     osMessageQueueReset(task_runtime.msgq.gimbal.sample);
     osMessageQueuePut(task_runtime.msgq.gimbal.sample, &sample, 0, 0);
 
     /* 将需要与其他任务分享的数据放到消息队列中 */
-    osMessageQueueReset(task_runtime.msgq.gimbal.accl);
-    osMessageQueuePut(task_runtime.msgq.gimbal.accl, &bmi088.accl, 0, 0);
-    osMessageQueueReset(task_runtime.msgq.gimbal.eulr_imu);
-    osMessageQueuePut(task_runtime.msgq.gimbal.eulr_imu, &eulr_to_send, 0, 0);
-    osMessageQueueReset(task_runtime.msgq.ai.quat);
-    osMessageQueuePut(task_runtime.msgq.ai.quat, &(gimbal_ahrs.quat), 0, 0);
-    osMessageQueueReset(task_runtime.msgq.gimbal.gyro);
-    osMessageQueuePut(task_runtime.msgq.gimbal.gyro, &control_gyro, 0, 0);
 
   }
 }

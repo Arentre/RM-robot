@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include "bsp\uart.h"
+#include "bsp/uart.h"
 
 #define CRSF_FRAMETYPE_LINK_STATISTICS (0x14u)
 #define CRSF_FRAMETYPE_RC_CHANNELS_PACKED (0x16u)

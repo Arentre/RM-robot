@@ -1,5 +1,5 @@
 /* Includes ----------------------------------------------------------------- */
-#include "bsp\uart.h"
+#include "bsp/uart.h"
 
 /* Private define ----------------------------------------------------------- */
 /* Private macro ------------------------------------------------------------ */
@@ -11,9 +11,9 @@ static void (*UART_RxEventCallback[BSP_UART_NUM])(uint16_t size);
 /* Private function  -------------------------------------------------------- */
 static BSP_UART_t UART_Get(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART3)
-    return BSP_UART_DR16;
+    return BSP_UART_USART3;
   else if (huart->Instance == USART1)
-    return BSP_UART_REF;
+    return BSP_UART_USART1;
   else if (huart->Instance == USART6)
     return BSP_UART_AI;
   /*
@@ -115,9 +115,9 @@ void BSP_UART_IRQHandler(UART_HandleTypeDef *huart) {
 
 UART_HandleTypeDef *BSP_UART_GetHandle(BSP_UART_t uart) {
   switch (uart) {
-    case BSP_UART_DR16:
+    case BSP_UART_USART3:
       return &huart3;
-    case BSP_UART_REF:
+    case BSP_UART_USART1:
       return &huart1;
     case BSP_UART_AI:
       return &huart6;

@@ -11,11 +11,10 @@ extern "C" {
 /* Includes ----------------------------------------------------------------- */
 #include <cmsis_os2.h>
 
-#include "component\cmd.h"
-#include "component\filter.h"
-#include "component\pid.h"
-#include "device\can.h"
-#include "device\referee.h"
+#include "component/cmd.h"
+#include "component/filter.h"
+#include "component/pid.h"
+#include "device/can.h"
 /* Exported constants ------------------------------------------------------- */
 #define SHOOT_OK (0)        /* 运行正常 */
 #define SHOOT_ERR (-1)      /* 运行时发现了其他错误 */
@@ -69,15 +68,7 @@ typedef struct {
 } Shoot_Params_t;
 
 typedef struct {
-  float heat;          /* 现在热量水平 */
-  float last_heat;     /* 之前的热量水平 */
-  float heat_limit;    /* 热量上限 */
-  float speed_limit;   /* 弹丸初速是上限 */
-  float cooling_rate;  /* 冷却速率 */
-  float heat_increase; /* 每发热量增加值 */
-
-  float last_bullet_speed; /* 之前的弹丸速度 */
-  uint32_t available_shot; /* 热量范围内还可以发射的数量 */
+  uint32_t available_shot; /* Standalone burst allowance. */
 } Shoot_HeatCtrl_t;
 
 typedef struct {
@@ -173,13 +164,12 @@ int8_t Shoot_UpdateFeedback(Shoot_t *s, const CAN_t *can);
  *
  * \param s 包含射击数据的结构体
  * \param s_cmd 射击控制指令
- * \param s_ref 裁判系统数据
  * \param dt_sec 两次调用的时间间隔
  *
  * \return 函数运行结果
  */
 int8_t Shoot_Control(Shoot_t *s, CMD_ShootCmd_t *s_cmd,
-                     Referee_ForShoot_t *s_ref, uint32_t now);
+                     uint32_t now);
 
 /**
  * \brief 复制射击输出值
@@ -195,14 +185,6 @@ void Shoot_DumpOutput(Shoot_t *s, CAN_ShootOutput_t *out);
  * \param output 要清空的结构体
  */
 void Shoot_ResetOutput(CAN_ShootOutput_t *output);
-
-/**
- * @brief 导出射击UI数据
- *
- * @param s 射击结构体
- * @param ui UI结构体
- */
-void Shoot_DumpUI(Shoot_t *s, Referee_ShootUI_t *ui);
 
 #ifdef __cplusplus
 }

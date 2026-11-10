@@ -8,8 +8,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "component\cmd.h"
-#include "device\device.h"
+#include "component/cmd.h"
+#include "device/device.h"
 
 #define CRSF_CHANNEL_COUNT (16u)
 #define CRSF_RX_BUFFER_SIZE (64u)

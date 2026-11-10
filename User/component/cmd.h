@@ -13,7 +13,6 @@ extern "C" {
 
 #include "ahrs.h"
 
-#define CMD_REFEREE_MAX_NUM (3) /* 发送命令限定的最大数量 */
 
 /* 机器人型号 */
 typedef enum {
@@ -181,20 +180,7 @@ typedef enum {
   AI_STATUS_AUTOMATIC  /* 自动状态 */
 } CMD_AI_Status_t;
 
-/* UI所用行为状态 */
-typedef enum {
-  CMD_UI_NOTHING,          /* 当前无状态 */
-  CMD_UI_AUTO_AIM_START,   /* 自瞄状态开启 */
-  CMD_UI_AUTO_AIM_STOP,    /* 自瞄状态关闭 */
-  CMD_UI_HIT_SWITCH_START, /* 打符状态开启 */
-  CMD_UI_HIT_SWITCH_STOP   /* 打符状态关闭 */
-} CMD_UI_t;
 
-/*裁判系统发送的命令*/
-typedef struct {
-  CMD_UI_t cmd[CMD_REFEREE_MAX_NUM]; /* 命令数组 */
-  uint8_t counter;                   /* 命令计数 */
-} CMD_RefereeCmd_t;
 
 typedef struct {
   bool pc_ctrl;        /* 是否使用键鼠控制 */
@@ -216,7 +202,6 @@ typedef struct {
   CMD_ChassisCmd_t chassis; /* 底盘控制命令 */
   CMD_GimbalCmd_t gimbal;   /* 云台控制命令 */
   CMD_ShootCmd_t shoot;     /* 射击控制命令 */
-  CMD_RefereeCmd_t referee; /* 裁判系统发送命令 */
 } CMD_t;
 
 typedef struct {
@@ -291,15 +276,6 @@ int8_t CMD_ParseRc(CMD_RC_t *rc, CMD_t *cmd, float dt_sec);
  * @return int8_t 0对应没有错误
  */
 int8_t CMD_ParseHost(const CMD_Host_t *host, CMD_t *cmd, float dt_sec);
-
-/**
- * @brief 添加向Referee发送的命令
- *
- * @param ref 命令队列
- * @param cmd 要添加的命令
- * @return int8_t 0对应没有错误
- */
-int8_t CMD_RefereeAdd(CMD_RefereeCmd_t *ref, CMD_UI_t cmd);
 
 #ifdef __cplusplus
 }

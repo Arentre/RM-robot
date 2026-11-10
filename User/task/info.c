@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bsp\usb.h"
-#include "component\crc16.h"
-#include "module\gimbal.h"
-#include "task\user_task.h"
+#include "bsp/usb.h"
+#include "component/crc16.h"
+#include "module/gimbal.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
@@ -997,7 +997,7 @@ void Task_Info(void *argument) {
     accl_y = gimbal.feedback.accl.y;
     accl_z = gimbal.feedback.accl.z;
     roll_fb = gimbal.feedback.eulr.imu.rol;
-    bullet_speed_mps = gimbal_referee_bullet_speed_mps;
+    bullet_speed_mps = 0.0f; /* No measured bullet-speed source in this build. */
     can_tx_last_success_tick = gimbal_can_tx_health.last_success_tick;
     can_tx_failure_count = gimbal_can_tx_health.failure_count;
     yaw_current_mismatch_count =
@@ -1049,7 +1049,7 @@ void Task_Info(void *argument) {
      * Finally: limited Pitch reference (deg), limit active, LADRC output,
      * MCU time (s), actual GM6020 currents (A), temperatures (deg C), stop
      * reason, Yaw enable origin and travel (deg), then filtered BMI088 gyro
-     * x/y/z (deg/s), accelerometer x/y/z (g), roll (deg), and referee bullet
+     * x/y/z (deg/s), accelerometer x/y/z (g), roll (deg), and measured bullet
      * speed (m/s) for the sp_vision_25 host adapter. CAN TX age (ms),
      * cumulative TX failures, and Yaw/Pitch current mismatch duration (ms)
      * are appended for actuator-path diagnosis.

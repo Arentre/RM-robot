@@ -10,9 +10,9 @@
 /* Includes ----------------------------------------------------------------- */
 #include <math.h>
 
-#include "component\gimbal_safety.h"
-#include "module\gimbal.h"
-#include "task\user_task.h"
+#include "component/gimbal_safety.h"
+#include "module/gimbal.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
@@ -26,10 +26,8 @@ CAN_GimbalOutput_t gimbal_out;
 
 #ifdef DEBUG
 CMD_GimbalCmd_t gimbal_cmd;
-Referee_GimbalUI_t gimbal_ui;
 #else
 static CMD_GimbalCmd_t gimbal_cmd;
-static Referee_GimbalUI_t gimbal_ui;
 #endif
 
 static CMD_GimbalCmd_t remote_gimbal_cmd;
@@ -524,9 +522,6 @@ void Task_CtrlGimbal(void *argument) {
     osMessageQueueReset(task_runtime.msgq.can.output.gimbal);
     osMessageQueuePut(task_runtime.msgq.can.output.gimbal, &gimbal_out, 0, 0);
 
-    Gimbal_DumpUI(&gimbal, &gimbal_ui);
-    osMessageQueueReset(task_runtime.msgq.ui.gimbal);
-    osMessageQueuePut(task_runtime.msgq.ui.gimbal, &gimbal_ui, 0, 0);
 
     tick += delay_tick; /* 计算下一个唤醒时刻 */
     /* A late task must not issue a burst of catch-up control cycles. */

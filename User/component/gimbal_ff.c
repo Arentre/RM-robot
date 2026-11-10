@@ -5,29 +5,6 @@
 
 #define GIMBAL_FRICTION_RELEASE_SLEW_MULTIPLIER 4.0f
 
-volatile GimbalFrictionComp_t gimbal_yaw_friction = {
-    .enable = 1U,
-    .static_output = 0.035f,
-    .coulomb_output = 0.020f,
-    .deadband_rad = 0.00349066f,
-    .transition_rad_s = 0.08726646f,
-    .slew_per_s = 0.12f,
-    .output = 0.0f};
-
-volatile GimbalFrictionComp_t gimbal_pitch_friction = {
-    .enable = 1U,
-    .static_output = 0.020f,
-    .coulomb_output = 0.010f,
-    .deadband_rad = 0.00523599f,
-    .transition_rad_s = 0.08726646f,
-    .slew_per_s = 0.12f,
-    .output = 0.0f};
-
-/* Gravity compensation stays disabled until its sign and amplitude are
- * identified on the assembled pitch mechanism. */
-volatile GimbalGravityComp_t gimbal_pitch_gravity = {
-    .enable = 0U, .amplitude = 0.0f, .phase_rad = 0.0f, .output = 0.0f};
-
 void GimbalFriction_Reset(volatile GimbalFrictionComp_t *comp) {
   if (comp != NULL) comp->output = 0.0f;
 }

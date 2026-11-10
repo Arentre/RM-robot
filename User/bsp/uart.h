@@ -17,17 +17,17 @@ extern "C" {
 
 /* UART实体枚举，与设备对应 */
 typedef enum {
-  BSP_UART_DR16,
-  BSP_UART_REF,
-  BSP_UART_AI,
+  BSP_UART_USART3,
+  BSP_UART_USART1,
+  BSP_UART_USART6,
   /* BSP_UART_XXX, */
   BSP_UART_NUM,
   BSP_UART_ERR,
 } BSP_UART_t;
 
-/* The connector marked UART2 is STM32 USART1. ELRS reuses that physical
- * port while the referee task is disabled. */
-#define BSP_UART_ELRS BSP_UART_REF
+/* Physical connector UART2 maps to STM32 USART1. */
+#define BSP_UART_ELRS BSP_UART_USART1
+#define BSP_UART_AI BSP_UART_USART6
 
 /* UART支持的中断回调函数类型，具体参考HAL中定义 */
 typedef enum {

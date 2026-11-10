@@ -15,22 +15,6 @@
 /* Private macro ------------------------------------------------------------ */
 /* Private variables -------------------------------------------------------- */
 volatile uint8_t gimbal_pitch_protect_active = 0U;
-volatile uint8_t gimbal_ladrc_yaw_enable = 1U;
-volatile uint8_t gimbal_ladrc_pit_enable = 1U;
-/* Runtime Pitch-only output shaping. Bypass until hardware validation. */
-volatile float gimbal_pitch_output_filter_hz = 0.0f;
-
-/* 2026-10-07 实机扫频和两次 30 deg 往返验证后的 Yaw 参数。 */
-volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
-    .r = 10.0f, .b0 = 500.0f, .wc = 12.0f, .w0 = 40.0f,
-    .out_limit = 0.30f, .deadband_rad = 0.00349066f}; /* 0.2 deg */
-volatile LADRC_Params_t gimbal_ladrc_pit_param = {
-    .r = 13.0f, .b0 = 550.0f, .wc = 7.0f, .w0 = 22.0f,
-    .out_limit = 0.3f, .deadband_rad = 0.00523599f}; /* 0.3 deg */
-volatile uint8_t gimbal_yaw_dither_enable = 0U;
-volatile float gimbal_yaw_dither_amplitude = 0.008f;
-volatile float gimbal_yaw_dither_frequency_hz = 25.0f;
-volatile float gimbal_yaw_dither_output = 0.0f;
 static float gimbal_yaw_dither_phase = 0.0f;
 /* Private function  -------------------------------------------------------- */
 
@@ -518,6 +502,4 @@ void Gimbal_ResetOutput(CAN_GimbalOutput_t *output) {
  * @param g 云台结构体
  * @param ui UI结构体
  */
-void Gimbal_DumpUI(const Gimbal_t *g, Referee_GimbalUI_t *ui) {
-  ui->mode = g->mode;
-}
+

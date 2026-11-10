@@ -7,18 +7,14 @@
 
 #include <stdlib.h>
 
-#include "bsp\mm.h"
+#include "bsp/mm.h"
 #include "cmsis_os2.h"
-#include "component\limiter.h"
-#include "device\can.h"
-#include "module\cap.h"
+#include "component/limiter.h"
+#include "device/can.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
-#define _CAP_PERCENTAGE_WORK 100   /* 底盘不再限制功率的电容电量 */
-#define _CAP_PERCENTAGE_CHARGE 30 /* 电容开始工作的电容电量 */
-
-#define CHASSIS_MAX_CAP_POWER 100 /* 电容能够提供的最大功率 */
+#define CHASSIS_STANDALONE_POWER_LIMIT_W (50.0f)
 
 #define CHASSIS_ROTOR_WZ_MIN 0.6f          /* 小陀螺旋转位移下界 */
 #define CHASSIS_ROTOR_WZ_MAX 0.8f          /* 小陀螺旋转位移上界 */
@@ -34,23 +30,6 @@
 #define CHASSIS_REVERSAL_ZERO_SPEED_RPM (10.0f * CHASSIS_M3508_GEAR_RATIO)
 #define CHASSIS_CURRENT_LIMIT_NORMALIZED (4.0f / CAN_M3508_MAX_ABS_CUR)
 /* Private macro ------------------------------------------------------------ */
-
-/* 保证电容电量宏定义在正确范围内 */
-#if ((_CAP_PERCENTAGE_WORK < 0) || (_CAP_PERCENTAGE_WORK > 100) || \
-     (_CAP_PERCENTAGE_CHARGE < 0) || (_CAP_PERCENTAGE_CHARGE > 100))
-#error "Cap percentage should be in the range from 0 to 100."
-#endif
-
-/* 保证电容功率宏定义在正确范围内 */
-#if ((CHASSIS_MAX_CAP_POWER < 60) || (CHASSIS_MAX_CAP_POWER > 200))
-#error "The capacitor power should be in in the range from 60 to 200."
-#endif
-
-/* Private variables -------------------------------------------------------- */
-
-static const float CAP_PERCENTAGE_WORK = (float)_CAP_PERCENTAGE_WORK / 100.0f;
-static const float CAP_PERCENTAGE_CHARGE =
-    (float)_CAP_PERCENTAGE_CHARGE / 100.0f;
 
 /* Private function  -------------------------------------------------------- */
 /**
@@ -396,47 +375,6 @@ int8_t Chassis_Control(Chassis_t *c, const CMD_ChassisCmd_t *c_cmd,
 }
 
 /**
- * @brief 底盘功率限制
- *
- * @param c 底盘数据
- * @param cap 电容数据
- * @param ref 裁判系统数据
- * @return 函数运行结果
- */
-int8_t Chassis_PowerLimit(Chassis_t *c, const CAN_Capacitor_t *cap,
-                          const Referee_ForChassis_t *ref) {
-  float power_limit = 0.0f;
-  if (ref->ref_status != REF_STATUS_RUNNING) {
-    /* 裁判系统离线，将功率限制为固定值 */
-    power_limit = CHASSIS_POWER_MAX_WITHOUT_REF;
-  } else {
-    if (cap->cap_status == CAN_CAP_STATUS_RUNNING &&
-        cap->percentage > CAP_PERCENTAGE_CHARGE) {
-      /* 电容在线且电量足够，使用电容 */
-      if (cap->percentage > CAP_PERCENTAGE_WORK) {
-        /* 电容接近充满时不再限制功率 */
-        power_limit = -1.0f;
-      } else {
-        /* 按照电容能量百分比计算输出功率 */
-        power_limit = ref->chassis_power_limit +
-                      (cap->percentage - CAP_PERCENTAGE_CHARGE) /
-                          (CAP_PERCENTAGE_WORK - CAP_PERCENTAGE_CHARGE) *
-                          (float)CHASSIS_MAX_CAP_POWER;
-      }
-    } else {
-      /* 电容不在工作，根据缓冲能量计算输出功率限制 */
-      power_limit = PowerLimit_TargetPower(ref->chassis_power_limit,
-                                           ref->chassis_pwr_buff);
-    }
-  }
-  /* 应用功率限制 */
-  PowerLimit_ChassicOutput(power_limit, c->out, c->feedback.motor_rpm,
-                           c->num_wheel);
-
-  return CHASSIS_OK;
-}
-
-/**
  * \brief 复制底盘输出值
  *
  * \param s 包含底盘数据的结构体
@@ -459,13 +397,9 @@ void Chassis_ResetOutput(CAN_ChassisOutput_t *out) {
   }
 }
 
-/**
- * @brief 导出底盘数据
- *
- * @param chassis 底盘数据结构体
- * @param ui UI数据结构体
- */
-void Chassis_DumpUI(const Chassis_t *c, Referee_ChassisUI_t *ui) {
-  ui->mode = c->mode;
-  ui->angle = c->feedback.gimbal_yaw_encoder - c->mech_zero->yaw;
+int8_t Chassis_PowerLimit(Chassis_t *c) {
+  /* Preserve the existing referee-offline power limit. */
+  PowerLimit_ChassicOutput(CHASSIS_STANDALONE_POWER_LIMIT_W, c->out,
+                           c->feedback.motor_rpm, c->num_wheel);
+  return CHASSIS_OK;
 }

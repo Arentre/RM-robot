@@ -10,11 +10,10 @@
 #include <math.h>
 #include <string.h>
 
-#include "bsp\can.h"
-#include "bsp\mm.h"
-#include "component\user_math.h"
-#include "component\gimbal_safety.h"
-#include "device\referee.h"
+#include "bsp/can.h"
+#include "bsp/mm.h"
+#include "component/user_math.h"
+#include "component/gimbal_safety.h"
 
 /* Private define ----------------------------------------------------------- */
 /* Motor id */
@@ -46,16 +45,8 @@
 
 #define CAN_MOTOR_RX_FIFO CAN_RX_FIFO0
 
-/* Super capacitor */
-#define CAN_CAP_FB_ID_BASE (0x211)
-#define CAN_CAP_CTRL_ID_BASE (0x210)
-
-#define CAN_CAP_RES (100) /* 电容数据分辨率 */
-
-#define CAN_CAP_RX_FIFO CAN_RX_FIFO1
-
-/* TOF */
-#define CAN_TOF_ID_BASE (0x280)
+/* CAN2 motor feedback uses FIFO1, matching the registered callback. */
+#define CAN_SECOND_BUS_RX_FIFO CAN_RX_FIFO1
 
 /* Private macro ------------------------------------------------------------ */
 /* Private typedef ---------------------------------------------------------- */
@@ -81,19 +72,6 @@ static void CAN_Motor_Decode(CAN_MotorFeedback_t *feedback,
   feedback->temp = raw[6];
 }
 
-void CAN_Cap_Decode(CAN_CapFeedback_t *feedback, const uint8_t *raw) {
-  feedback->input_volt = (float)((raw[1] << 8) | raw[0]) / (float)CAN_CAP_RES;
-  feedback->cap_volt = (float)((raw[3] << 8) | raw[2]) / (float)CAN_CAP_RES;
-  feedback->input_curr = (float)((raw[5] << 8) | raw[4]) / (float)CAN_CAP_RES;
-  feedback->target_power = (float)((raw[7] << 8) | raw[6]) / (float)CAN_CAP_RES;
-}
-
-void CAN_Tof_Decode(CAN_Tof_t *tof, const uint8_t *raw) {
-  tof->dist = (float)((raw[2] << 16) | (raw[1] << 8) | raw[0]) / 1000.0f;
-  tof->status = raw[3];
-  tof->signal_strength = (raw[5] << 8) | raw[4];
-}
-
 static void CAN_CAN1RxFifoMsgPendingCallback(void) {
   if (gcan == NULL) return;
   if (HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_1), CAN_MOTOR_RX_FIFO,
@@ -107,7 +85,7 @@ static void CAN_CAN1RxFifoMsgPendingCallback(void) {
 
 static void CAN_CAN2RxFifoMsgPendingCallback(void) {
   if (gcan == NULL) return;
-  if (HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_2), CAN_CAP_RX_FIFO,
+  if (HAL_CAN_GetRxMessage(BSP_CAN_GetHandle(BSP_CAN_2), CAN_SECOND_BUS_RX_FIFO,
                            &raw_rx2.rx_header, raw_rx2.rx_data) != HAL_OK)
     return;
   raw_rx2.bus = BSP_CAN_2;
@@ -150,7 +128,7 @@ int8_t CAN_Init(CAN_t *can, const CAN_Params_t *param) {
                                CAN_IT_RX_FIFO0_MSG_PENDING);
 
   can_filter.FilterBank = 14;
-  can_filter.FilterFIFOAssignment = CAN_CAP_RX_FIFO;
+  can_filter.FilterFIFOAssignment = CAN_SECOND_BUS_RX_FIFO;
 
   HAL_CAN_ConfigFilter(BSP_CAN_GetHandle(BSP_CAN_2), &can_filter);
   HAL_CAN_Start(BSP_CAN_GetHandle(BSP_CAN_2));
@@ -319,14 +297,6 @@ int8_t CAN_StoreMsg(CAN_t *can, CAN_RawRx_t *can_rx) {
       CAN_Motor_Decode(&(can->motor.gimbal.as_array[index]), can_rx->rx_data,
                        CAN_GM6020_MAX_ABS_CUR);
       break;
-    case CAN_CAP_FB_ID_BASE:
-      can->recive_flag |= 1 << 9;
-      CAN_Cap_Decode(&(can->cap.cap_feedback), can_rx->rx_data);
-      break;
-    case CAN_TOF_ID_BASE:
-      can->recive_flag |= 1 << 10;
-      CAN_Tof_Decode(&(can->tof), can_rx->rx_data);
-      break;
     default:
       break;
   }
@@ -344,26 +314,3 @@ int8_t CAN_ClearFlag(CAN_t *can, uint32_t flag) {
   return DEVICE_OK;
 }
 
-int8_t CAN_Cap_Control(CAN_CapOutput_t *output, CAN_t *can) {
-  float power_limit = output->power_limit;
-
-  uint16_t cap = (uint16_t)(power_limit * CAN_CAP_RES);
-
-  raw_tx.tx_header.StdId = CAN_CAP_CTRL_ID_BASE;
-  raw_tx.tx_header.IDE = CAN_ID_STD;
-  raw_tx.tx_header.RTR = CAN_RTR_DATA;
-  raw_tx.tx_header.DLC = CAN_MOTOR_TX_BUF_SIZE;
-
-  raw_tx.tx_data[0] = (cap >> 8) & 0xFF;
-  raw_tx.tx_data[1] = cap & 0xFF;
-
-  HAL_CAN_AddTxMessage(BSP_CAN_GetHandle(can->param->cap), &raw_tx.tx_header,
-                       raw_tx.tx_data, &(can->mailbox.cap));
-  return DEVICE_OK;
-}
-
-void CAN_CAP_HandleOffline(CAN_Capacitor_t *cap, CAN_CapOutput_t *cap_out,
-                           float power_chassis) {
-  cap->cap_status = CAN_CAP_STATUS_OFFLINE;
-  cap_out->power_limit = power_chassis;
-}

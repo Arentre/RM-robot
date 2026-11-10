@@ -5,10 +5,9 @@
 */
 
 /* Includes ----------------------------------------------------------------- */
-#include "device\can.h"
+#include "device/can.h"
 
-#include "device\referee.h"
-#include "task\user_task.h"
+#include "task/user_task.h"
 
 /* Private typedef ---------------------------------------------------------- */
 /* Private define ----------------------------------------------------------- */
@@ -63,22 +62,6 @@ void Task_Can(void *argument) {
     osMessageQueueReset(task_runtime.msgq.can.feedback.shoot);
     osMessageQueuePut(task_runtime.msgq.can.feedback.shoot, &can, 0, 0);
 
-    if (CAN_CheckFlag(&can, CAN_REC_CAP_FINISHED)) {
-      osMessageQueueReset(task_runtime.msgq.can.feedback.cap);
-      osMessageQueuePut(task_runtime.msgq.can.feedback.cap, &can, 0, 0);
-      CAN_ClearFlag(&can, CAN_REC_CAP_FINISHED);
-    } else {
-      // Error Handle
-    }
-
-    if (CAN_CheckFlag(&can, CAN_REC_TOF_FINISHED)) {
-      osMessageQueueReset(task_runtime.msgq.can.feedback.tof);
-      osMessageQueuePut(task_runtime.msgq.can.feedback.tof, &can, 0, 0);
-      CAN_ClearFlag(&can, CAN_REC_TOF_FINISHED);
-    } else {
-      // Error Handle
-    }
-
     if (osMessageQueueGet(task_runtime.msgq.can.output.chassis,
                           &(can_out.chassis), 0, 0) == osOK) {
       CAN_Motor_Control(CAN_MOTOR_GROUT_CHASSIS, &can_out, &can);
@@ -116,10 +99,6 @@ void Task_Can(void *argument) {
       CAN_Motor_Control(CAN_MOTOR_GROUT_SHOOT1, &can_out, &can);
     }
 
-    if (osMessageQueueGet(task_runtime.msgq.can.output.cap, &(can_out.cap), 0,
-                          0) == osOK) {
-      CAN_Cap_Control(&(can_out.cap), &can);
-    }
     osDelayUntil(tick); /* 运行结束，等待下一次唤醒 */
   }
 }

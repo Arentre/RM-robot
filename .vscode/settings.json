@@ -1,10 +1,47 @@
 {
-    "python.analysis.extraPaths": [
-        "C:\\Users\\seven\\.kendryte\\k230_canmv_stubs\\791c1ceee8acb4699d59d8dbf8f043ea3940a766"
-    ],
-    "python.analysis.stubPath": "C:\\Users\\seven\\.kendryte\\k230_canmv_pylance\\080e6dc8ac642fc5\\typings",
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportMissingModuleSource": "none"
+  "cmake.sourceDirectory": "${workspaceFolder}",
+  "editor.suggestSelection": "first",
+  "editor.parameterHints.enabled": true,
+  "editor.semanticHighlighting.enabled": true,
+  "editor.inlayHints.enabled": "onUnlessPressed",
+  "files.associations": {
+    "*.h": "c",
+    "*.ioc": "properties",
+    "*.ld": "linkerscript"
+  },
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/cmake-build-*/**": true,
+    "**/.cache/**": true
+  },
+  "search.exclude": {
+    "**/build/**": true,
+    "**/cmake-build-*/**": true,
+    "**/.cache/**": true
+  },
+  "emberprobe.transport": "swd",
+  "emberprobe.rtos": "FreeRTOS",
+  "VsCodeTaskButtons.showCounter": false,
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "$(tools) 编译 Debug",
+      "task": "RM-C: build Debug",
+      "tooltip": "配置并编译 RM-C Debug 固件"
     },
-    "cmake.sourceDirectory": "D:/Desktop/RM电控/全向轮哨兵/rmu_gazebo_simulator/rmu_gazebo_simulator"
+    {
+      "label": "$(refresh) 全量编译 Debug",
+      "task": "RM-C: rebuild Debug",
+      "tooltip": "重新配置、清理构建产物并完整编译 RM-C Debug 固件"
+    },
+    {
+      "label": "$(search) 检测 DFU",
+      "task": "RM-C: list DFU devices",
+      "tooltip": "列出 STM32 USB DFU 设备（不烧录）"
+    },
+    {
+      "label": "$(cloud-download) DFU 烧录",
+      "task": "RM-C: flash Debug via DFU",
+      "tooltip": "先编译，再通过 USB DFU 烧录 Debug 固件；开发板需先进入 DFU 模式"
+    }
+  ]
 }
