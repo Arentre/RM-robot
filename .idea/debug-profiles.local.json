@@ -1,0 +1,17 @@
+{
+  "debug-profiles": [
+    {
+      "id": "a9e7149a-c495-4a23-ac18-6c3636f57872",
+      "type": "stlink",
+      "name": "ST-LINK",
+      "server": {
+        "executable": "/opt/ST/STM32CubeCLT_1.22.0/STLink-gdb-server/bin/ST-LINK_gdbserver",
+        "stm32CubeProgrammerPath": "/opt/ST/STM32CubeCLT_1.22.0/STM32CubeProgrammer/bin",
+        "stLinkFrequencyKHz": 8000
+      },
+      "gdb": {
+        "persistentSession": false
+      }
+    }
+  ]
+}
