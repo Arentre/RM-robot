@@ -6,14 +6,14 @@
 extern "C" {
 #endif
 
-/* Second-order LADRC: angle reference/feedback in rad, output normalized. */
+/* 二阶 LADRC：目标和反馈角使用弧度，输出为归一化电机指令。 */
 typedef struct {
-  float r;          /* tracking differentiator speed factor */
-  float b0;         /* estimated plant input gain; sign sets control direction */
-  float wc;         /* controller bandwidth, rad/s */
-  float w0;         /* observer bandwidth, rad/s; independent from wc */
-  float out_limit;  /* absolute normalized motor command limit */
-  float deadband_rad; /* settled angle tolerance; 0 disables it */
+  float r;          /* 跟踪微分器的响应速度系数 */
+  float b0;         /* 估计的对象输入增益，符号决定控制方向 */
+  float wc;         /* 控制器带宽，单位为弧度每秒 */
+  float w0;         /* 观测器带宽，单位为弧度每秒，可独立于 wc 设置 */
+  float out_limit;  /* 归一化电机指令的绝对值上限 */
+  float deadband_rad; /* 到位角容差，设为 0 时关闭 */
 } LADRC_Params_t;
 
 typedef struct {
@@ -23,24 +23,22 @@ typedef struct {
   float beta1, beta2, beta3;
   float kp, kd;
 
-  float v1, v2;       /* tracking differentiator */
-  float z1, z2, z3;   /* extended state observer */
-  float v1_i, v2_i;   /* previous derivatives for trapezoidal integration */
+  float v1, v2;       /* 跟踪微分器状态 */
+  float z1, z2, z3;   /* 扩张状态观测器状态 */
+  float v1_i, v2_i;   /* 梯形积分所需的上次导数 */
   float z1_i, z2_i, z3_i;
-  float output;       /* saturated output; also LESO's previous input */
-  float deadband_settle_time; /* low-error/low-rate dwell before holding */
+  float output;       /* 限幅输出，也是 LESO 的上次输入 */
+  float deadband_settle_time; /* 进入到位状态前的小误差、低速持续时间 */
   uint8_t deadband_active;
 } LADRC_t;
 
-/* Adapted from the supplied Sguan_Ladrc LTD + LESO + LSEF equations. */
+/* 根据 Sguan_Ladrc 的 LTD、LESO 和 LSEF 方程改写。 */
 int LADRC_Init(LADRC_t *ctrl, const volatile LADRC_Params_t *param, float T);
 void LADRC_Reset(LADRC_t *ctrl, float angle, float angular_speed);
-/* Update the angle loop with the measured angular speed for derivative
- * feedback.  All signals use the same units as the existing angle loop
- * (radians and radians/second). */
+/* 用实测角速度更新角度环的导数反馈。角度和角速度分别使用弧度和弧度每秒。 */
 float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
                    float angular_speed);
-/* Circular angle input with observer/TD position rebasing for repeated turns. */
+/* 处理循环角度输入，连续转动时对观测器和跟踪微分器的位置状态重新定基。 */
 float LADRC_UpdateAngle(LADRC_t *ctrl, float reference, float feedback,
                         float angular_speed);
 

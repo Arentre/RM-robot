@@ -1,8 +1,9 @@
-function [data,meta] = run_gimbal_chirp_test(port,direction)
-% Collect a bounded closed-loop Yaw chirp for independent plant ID.
-% The reference is 5 deg and 0.2..2.0 Hz for 20 s, so it remains well
-% inside the firmware travel/rate/current protection used by bench tests.
+function [data,meta] = run_gimbal_chirp_test(port,direction,outputLimit)
+% 采集受保护的闭环 Yaw 扫频数据，供独立辨识使用。
+% 固件以 5° 幅值、0.2 至 2.0 Hz 生成参考目标。
+% 每组扫频持续 20 秒，试验始终监测行程、速度和电流。
 if nargin < 2, direction = "up"; end
+if nargin < 3, outputLimit = 0.45; end
 direction = string(validatestring(char(direction),{'up','down'}));
 s = getPort(port);
 configureTerminator(s,'LF');
@@ -20,21 +21,23 @@ if direction == "up"
 else
     f0_Hz = 2.0; f1_Hz = 0.2;
 end
-commandPeriod_s = 0; % Reference generation runs inside the 500 Hz firmware.
+commandPeriod_s = 0; % 参考信号由 500 Hz 固件控制任务生成。
 
-writeline(s,'ENABLE=1');
-[baseline,origin_deg] = collectFixed(s,2.0,0,NaN);
-writeline(s,"YCHIRP="+upper(direction));
-[excitation,~] = collectFixed(s,duration_s+0.2,1,origin_deg);
-writeline(s,'CENTER');
-[recovery,~] = collectFixed(s,3.0,2,origin_deg);
-writeline(s,'HOLD');
+gimbal_usb_command(s,'STOP','ack:STOP');
+[budgetGuard,limit] = gimbal_bench_budget(s,'Y',outputLimit);
+gimbal_usb_command(s,'ENABLE=YAW','ack:ENABLE,');
+[baseline,origin_deg] = collectFixed(s,2.0,0,NaN,limit);
+gimbal_usb_command(s,"YCHIRP="+upper(direction),"ack:YCHIRP=");
+[excitation,~] = collectFixed(s,duration_s+0.2,1,origin_deg,limit);
+gimbal_usb_command(s,'CENTER','ack:CENTER');
+[recovery,~] = collectFixed(s,3.0,2,origin_deg,limit);
+gimbal_usb_command(s,'HOLD','ack:HOLD');
 pause(0.1);
 writeline(s,'STOP');
 
 rows = [baseline;excitation;recovery];
 data = array2table(rows(:,1:41),'VariableNames',telemetryNames());
-data.Phase = categorical(rows(:,36),[0 1 2], ...
+data.Phase = categorical(rows(:,end),[0 1 2], ...
     {'baseline','chirp','recovery'});
 data.TestTime_s = data.McuTime_s-data.McuTime_s(1);
 meta = struct('Direction',direction,'Amplitude_deg',amplitude_deg, ...
@@ -76,17 +79,14 @@ fprintf(['Chirp %s complete: travel %.2f deg, rate %.1f deg/s, ' ...
 fprintf('Saved %s\n',csvPath);
 end
 
-function [rows,origin_deg] = collectFixed(s,duration_s,phase,origin_deg)
+function [rows,origin_deg] = collectFixed(s,duration_s,phase,origin_deg,limit)
 rows = zeros(0,42);
-t0 = tic; lastPing = tic; lastFrame = tic;
+t0 = tic; lastFrame = tic;
 while toc(t0) < duration_s
-    if toc(lastPing) >= 0.25
-        writeline(s,'PING'); lastPing = tic;
-    end
     [v,lastFrame] = nextFrame(s,lastFrame);
     if isempty(v), continue; end
     if phase == 0 && toc(t0) < 0.3 && v(12) == 0, continue; end
-    assertSafe(s,v);
+    assertSafe(s,v,limit);
     if isnan(origin_deg), origin_deg = mod(v(33),360); end
     rows(end+1,:) = [v(:).',phase]; %#ok<AGROW>
 end
@@ -95,28 +95,28 @@ end
 
 function [v,lastFrame] = nextFrame(s,lastFrame)
 v = [];
+if toc(lastFrame) > 0.6
+    writeline(s,'STOP');
+    error('No valid telemetry for 0.6 s; STOP sent.');
+end
 if s.NumBytesAvailable == 0
-    if toc(lastFrame) > 0.6
-        writeline(s,'STOP');
-        error('Telemetry timeout; STOP sent.');
-    end
     pause(0.001);
     return
 end
 line = strtrim(string(readline(s)));
 if ~startsWith(line,'yaw:'), return; end
 candidate = str2double(split(extractAfter(line,4),','));
-if ~(numel(candidate) == 35 || numel(candidate) == 41) || ...
+if ~(numel(candidate) == 35 || numel(candidate) == 41 || numel(candidate) == 43 || numel(candidate) == 47) || ...
         any(~isfinite(candidate)), return; end
 if numel(candidate) == 35, candidate(36:41) = NaN; end
-v = candidate;
+v = candidate(1:41);
 lastFrame = tic;
 end
 
-function assertSafe(s,v)
-if v(32) ~= 0 || v(10) ~= 0 || v(12) == 0 || ...
-        abs(v(34)) > 12 || abs(v(3)) > 150 || abs(v(8)) > 0.151 || ...
-        abs(v(28)) > 0.60 || v(30) > 80
+function assertSafe(s,v,limit)
+if v(32) ~= 0 || v(10) ~= 0 || v(12) == 0 || v(22) ~= 0 || ...
+        abs(v(34)) > 12 || abs(v(3)) > 150 || abs(v(8)) > limit+0.001 || ...
+        abs(v(28)) > 1.60 || v(30) > 80
     writeline(s,'STOP');
     error(['Chirp safety threshold exceeded; STOP sent. reason %.0f, ' ...
         'travel %.2f deg, rate %.1f deg/s, output %.3f, current %.3f A.'], ...

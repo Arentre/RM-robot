@@ -1,6 +1,6 @@
 function result = pitch_hil_trial(port, offsets, durations, cfg)
-% Logged closed-loop Pitch experiment. Offsets are from the ENABLE pose.
-% Requires 41-channel firmware; never changes Yaw tuning. Every exit sends STOP.
+% 记录闭环 Pitch 试验，角度偏移相对于使能时的姿态。
+% 兼容 41、43、47 列遥测，不改 Yaw 调参值；每次退出发送 STOP。
 if nargin < 4, cfg = struct(); end
 if nargin < 3, durations = 4*ones(size(offsets)); end
 validateattributes(offsets,{'numeric'},{'vector','real','finite','nonempty'});
@@ -130,7 +130,11 @@ end
         line = string(strtrim(partial(1:q))); partial = partial(q+1:end);
         if startsWith(line,'yaw:')
             v = str2double(split(extractAfter(line,4),','));
-            if numel(v)~=41 || any(~isfinite(v)), v=[]; end
+            if ~ismember(numel(v),[41 43 47]) || any(~isfinite(v))
+                v=[];
+            else
+                v=v(1:41);
+            end
         end
     end
 
@@ -180,7 +184,7 @@ end
 end
 
 function guard = makeStopGuard(s)
-% Capture the serial handle outside the trial's shared nested workspace.
+% 在试验的共享嵌套作用域之外捕获串口句柄。
 guard = onCleanup(@() emergencyStop(s));
 end
 

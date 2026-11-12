@@ -5,7 +5,7 @@
 
 #define ANGLE_TRACK_TAU (6.28318530717958647692f)
 
-/* Works for wrapped inputs and controller states that have accumulated turns. */
+/* 支持单圈角度与已累计多圈的控制状态。 */
 static inline float AngleTrack_Error(float target, float actual) {
   float delta = fmodf(target - actual, ANGLE_TRACK_TAU);
   if (delta > ANGLE_TRACK_TAU * 0.5f) delta -= ANGLE_TRACK_TAU;
@@ -20,8 +20,7 @@ typedef struct {
   uint8_t ready;
 } AngleTrack_t;
 
-/* Dropout/reconnection rebases the single-turn sample without inventing turns.
- * The caller supplies fresh samples only and converts its timeout to ticks. */
+/* 反馈断开重连后重新对齐单圈读数，不凭空累计转数。调用方只提交新采样，并将超时时间换算为节拍数。 */
 static inline void AngleTrack_Update(AngleTrack_t *track, float angle,
                                      uint32_t tick, uint32_t max_gap_ticks) {
   if (!isfinite(angle)) return;
@@ -42,9 +41,8 @@ typedef struct {
   uint8_t ready;
 } AngleAssist_t;
 
-/* IMU measures world heading, encoder measures joint position. Never substitute
- * encoder angle directly: chassis rotation is real world-heading motion too.
- * Encoder motion can corroborate a gyro prediction when an IMU sample jumps. */
+/* IMU 测世界坐标下的航向，编码器测关节角。底盘转动也会改变世界航向，因此不能直接用编码器替换 IMU。
+ * IMU 跳变时可用编码器运动佐证陀螺仪预测。 */
 static inline float AngleAssist_Update(AngleAssist_t *assist, float imu,
                                         float gyro_delta, float encoder_delta,
                                         uint8_t encoder_valid) {
@@ -57,8 +55,8 @@ static inline float AngleAssist_Update(AngleAssist_t *assist, float imu,
   }
   const float imu_delta = AngleTrack_Error(imu, assist->previous_imu);
   assist->previous_imu = imu;
-  /* 0.12 rad per sample is far above normal motion at 500 Hz. This rejects
-   * jumps only when gyro and fresh motor motion both support a small step. */
+  /* 在 500 Hz 下，单帧 0.12 弧度远超正常运动。
+   * 只有陀螺仪与新鲜电机反馈都支持小步运动时，才拒绝该跳变。 */
   if (encoder_valid != 0U && fabsf(imu_delta - gyro_delta) > 0.12f &&
       fabsf(gyro_delta) < 0.06f && fabsf(encoder_delta) < 0.06f) {
     assist->continuous += gyro_delta;

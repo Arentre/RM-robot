@@ -1,5 +1,5 @@
 function out = run_gimbal_sim()
-% Run the numerical gimbal model and save curves and summary metrics.
+% 运行云台数值仿真并保存曲线和统计指标。
 here = fileparts(mfilename('fullpath'));
 model = 'gimbal_2axis';
 if ~isfile(fullfile(here, [model '.slx']))

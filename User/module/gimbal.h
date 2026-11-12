@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-/* Includes ----------------------------------------------------------------- */
+/* 头文件 */
 #include "component/ahrs.h"
 #include "component/angle_track.h"
 #include "component/cmd.h"
@@ -19,20 +19,20 @@ extern "C" {
 #include "device/bmi088.h"
 #include "device/can.h"
 
-/* Exported constants ------------------------------------------------------- */
+/* 对外常量 */
 #define GIMBAL_OK (0)        /* 运行正常 */
 #define GIMBAL_ERR (-1)      /* 运行时发现了其他错误 */
 #define GIMBAL_ERR_NULL (-2) /* 运行时发现NULL指针 */
 #define GIMBAL_ERR_MODE (-3) /* 运行时配置了错误的CMD_GimbalMode_t */
 
-/* Retain only the absolute Pitch and extreme body-rate safety stops. */
-#define GIMBAL_PITCH_SAFE_LIMIT_RAD (1.22173048f)   /* 70 deg soft target limit */
-#define GIMBAL_PITCH_FAULT_LIMIT_RAD (1.39626340f)  /* 80 deg abnormal overtravel */
-#define GIMBAL_GYRO_SAFE_NORM_RAD_S (12.21730476f)  /* 700 deg/s body norm */
-#define GIMBAL_NORMALIZED_OUTPUT_MAX (1.0f)         /* CAN command range */
+/* Pitch 姿态范围和机体系角速度保护。 */
+#define GIMBAL_PITCH_SAFE_LIMIT_RAD (1.22173048f)   /* 70° 软目标限位 */
+#define GIMBAL_PITCH_FAULT_LIMIT_RAD (1.39626340f)  /* 80° 异常越界保护 */
+#define GIMBAL_GYRO_SAFE_NORM_RAD_S (12.21730476f)  /* 机体系角速度模长 700°/s */
+#define GIMBAL_NORMALIZED_OUTPUT_MAX (1.0f)         /* CAN 归一化指令范围 */
 
-/* Exported macro ----------------------------------------------------------- */
-/* Exported types ----------------------------------------------------------- */
+/* 对外宏 */
+/* 对外类型 */
 
 /* 用enum组合所有PID，GIMBAL_PID_NUM长度的数组都可以用这个枚举访问 */
 enum Gimbal_PID_e {
@@ -53,15 +53,15 @@ enum Gimbal_Acuator_e {
 typedef enum {
   GIMBAL_TEST_STOP_NONE = 0,
   GIMBAL_TEST_STOP_COMMAND = 1,
-  GIMBAL_TEST_STOP_TIMEOUT = 2, /* Serial trajectory timeout. */
-  GIMBAL_TEST_STOP_YAW_TRAVEL = 3, /* Reserved legacy code; no travel stop. */
-  GIMBAL_TEST_STOP_RATE = 4,       /* Body gyro norm exceeded safe range. */
+  GIMBAL_TEST_STOP_TIMEOUT = 2, /* 串口轨迹超时。 */
+  GIMBAL_TEST_STOP_YAW_TRAVEL = 3, /* 保留旧诊断码，不据此限制行程。 */
+  GIMBAL_TEST_STOP_RATE = 4,       /* 机体系陀螺仪角速度模长超限。 */
   GIMBAL_TEST_STOP_INVALID_FEEDBACK = 5,
   GIMBAL_TEST_STOP_PITCH_PROTECT = 6,
-  GIMBAL_TEST_STOP_PITCH_TRAVEL = 7, /* Reserved legacy code; no travel stop. */
+  GIMBAL_TEST_STOP_PITCH_TRAVEL = 7, /* 保留旧诊断码，不据此限制行程。 */
   GIMBAL_TEST_STOP_INVALID_TARGET = 8,
   GIMBAL_TEST_STOP_CAN_TX = 9,
-  GIMBAL_TEST_STOP_ACTUATOR_CURRENT = 10,
+  GIMBAL_TEST_STOP_ACTUATOR_CURRENT = 10, /* 反馈电流持续超限。 */
   GIMBAL_TEST_STOP_CAN_RX = 11,
   GIMBAL_TEST_STOP_IMU_TIMEOUT = 12,
   GIMBAL_TEST_STOP_FEEDBACK_JUMP = 13,
@@ -71,7 +71,7 @@ typedef enum {
   GIMBAL_TEST_STOP_CAN_BUS_OFF = 17,
 } Gimbal_TestStopReason_e;
 
-/* Keil Watch diagnostics. Last reason survives CH5 disarm/rearm. */
+/* 供 Keil Watch 查看，上次故障原因在 CH5 解除后再使能时仍保留。 */
 typedef struct {
   uint32_t last_reason;
   uint32_t trip_count;
@@ -86,8 +86,7 @@ typedef struct {
 
 extern volatile GimbalProtectionStatus_t gimbal_protection_status;
 
-/* Frozen BEFORE outputs are zeroed. Updated only on a new protection trip;
- * disarming/rearming and live telemetry never erase the evidence. */
+/* 输出清零之前保存的快照，仅新保护触发时更新。解除、再使能和实时遥测均不清除快照。 */
 typedef struct {
   uint32_t reason;
   uint32_t tick;
@@ -140,16 +139,16 @@ typedef struct {
 
 /* 云台反馈数据的结构体，包含反馈控制用的反馈数据 */
 typedef struct {
-  AHRS_Accl_t accl; /* Raw BMI088 acceleration, in g. */
+  AHRS_Accl_t accl; /* BMI088 原始加速度，单位为 g。 */
   AHRS_Gyro_t gyro; /* IMU的陀螺仪数据 */
-  /* ZYX Euler rates derived from body gyro p/q/r.  Angle controllers must
-   * use these rates once Pitch/Roll are away from zero. */
+  /* 由机体系角速度 p/q/r 换算 ZYX 欧拉角速率。
+   * Pitch 或 Roll 不为零时，角度控制器应使用换算后的速率。 */
   AHRS_Gyro_t eulr_rate;
 
   struct {
-    float yaw_current; /* GM6020 actual torque current, A */
+    float yaw_current; /* GM6020 转矩电流反馈，单位为 A。 */
     float pit_current;
-    float yaw_temp; /* degree C */
+    float yaw_temp; /* 温度，单位为摄氏度。 */
     float pit_temp;
   } motor;
 
@@ -184,7 +183,7 @@ typedef struct {
   uint8_t ladrc_active[GIMBAL_ACTR_NUM];
 
   Gimbal_Limit_t limit;
-  float pit_control_target; /* Limited LADRC reference, rad. */
+  float pit_control_target; /* 限位后的 LADRC 目标，单位为弧度。 */
   uint8_t pit_limit_active;
 
   LowPassFilter2p_t filter_out[GIMBAL_ACTR_NUM]; /* 输出滤波器滤波器数组 */
@@ -193,7 +192,7 @@ typedef struct {
 
   Gimbal_Feedback_t feedback; /* 反馈 */
 
-  /* Motor joint position: continuous radians, not world-frame attitude. */
+  /* 电机关节位置使用连续弧度，不代表世界坐标下的姿态。 */
   AngleTrack_t encoder_track[GIMBAL_ACTR_NUM];
   uint32_t encoder_sample_count[GIMBAL_ACTR_NUM];
   float encoder_delta[GIMBAL_ACTR_NUM];
@@ -206,6 +205,7 @@ typedef struct {
 /* Keil Watch调试入口：默认使用LADRC，置0可逐轴回退。 */
 extern volatile uint8_t gimbal_ladrc_yaw_enable;
 extern volatile uint8_t gimbal_ladrc_pit_enable;
+/* 沿用旧变量名，实际统计连续反馈过流的周期数。 */
 extern volatile uint16_t gimbal_actuator_mismatch_count[GIMBAL_ACTR_NUM];
 extern volatile float gimbal_pitch_output_filter_hz;
 extern volatile LADRC_Params_t gimbal_ladrc_yaw_param;
@@ -215,7 +215,7 @@ extern volatile float gimbal_yaw_dither_amplitude;
 extern volatile float gimbal_yaw_dither_frequency_hz;
 extern volatile float gimbal_yaw_dither_output;
 
-/* Exported functions prototypes -------------------------------------------- */
+/* 对外函数声明 */
 
 /**
  * \brief 初始化云台

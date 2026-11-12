@@ -1,5 +1,5 @@
-/* Compile with stubs first, then User, in the include search path.
- * Exercises the actual CAN driver; no STM32 hardware or RTOS is simulated. */
+/* 编译时先搜索 stubs，再搜索 User。
+ * 测试直接调用实际 CAN 驱动，不模拟 STM32 硬件或 RTOS。 */
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -50,14 +50,14 @@ int main(void) {
   frame.rx_header.StdId = CAN_GM6020_PIT_ID;
   frame.rx_header.DLC = 8U;
   frame.receive_tick = 100U;
-  frame.rx_data[0] = 0x10U; /* Valid 180-degree encoder sample. */
+  frame.rx_data[0] = 0x10U; /* 有效的 180° 编码器采样。 */
   frame.rx_data[6] = 42U;
   assert(CAN_StoreMsg(&feedback, &frame) == DEVICE_OK);
   assert(feedback.gimbal_feedback_count[1] == 1U);
   assert(feedback.gimbal_feedback_tick[1] == 100U);
   const CAN_MotorFeedback_t good = feedback.motor.gimbal.as_array[1];
 
-  /* Inject corrupted payloads: they cannot make old feedback look fresh. */
+  /* 注入损坏数据，验证旧反馈不会被误判为新采样。 */
   frame.receive_tick = 200U;
   memset(frame.rx_data, 0xff, sizeof(frame.rx_data));
   assert(CAN_StoreMsg(&feedback, &frame) == DEVICE_ERR);
@@ -65,9 +65,9 @@ int main(void) {
   assert(feedback.gimbal_feedback_count[1] == 1U);
   assert(feedback.gimbal_feedback_tick[1] == 100U);
   assert(memcmp(&good, &feedback.motor.gimbal.as_array[1], sizeof(good)) == 0);
-  frame.rx_data[0] = 0x20U; frame.rx_data[1] = 0U; /* 8192 is out of range. */
+  frame.rx_data[0] = 0x20U; frame.rx_data[1] = 0U; /* 8192 超出范围。 */
   assert(CAN_StoreMsg(&feedback, &frame) == DEVICE_ERR);
-  frame.rx_data[0] = 0x1fU; frame.rx_data[1] = 0xffU; /* 8191 is valid. */
+  frame.rx_data[0] = 0x1fU; frame.rx_data[1] = 0xffU; /* 8191 有效。 */
   frame.bus = BSP_CAN_1;
   assert(CAN_StoreMsg(&feedback, &frame) == DEVICE_ERR);
   assert(feedback.gimbal_feedback_tick[1] == 100U);
@@ -94,16 +94,36 @@ int main(void) {
   }
   assert(feedback.gimbal_invalid_output_count == 12U);
 
-  /* A missing producer and tick wrap must both produce a correct sample age. */
+  /* 检查反馈停更和时钟计数回绕时的采样年龄。 */
   assert(GimbalSafety_AgeMs(121U, 100U, 1000U) > GIMBAL_IMU_TIMEOUT_MS);
   assert(GimbalSafety_AgeMs(4U, UINT32_MAX - 15U, 1000U) == 20U);
   assert(GimbalSafety_AgeMs(5U, UINT32_MAX - 15U, 1000U) == 21U);
   assert(GimbalSafety_AgeMs(6000000U, 0U, 1000U) == 6000000U);
   assert(GimbalSafety_AgeMs(102U, 100U, 100U) == 20U);
-  /* Permit real fast motion; reject a finite 30-degree sensor jump in 2 ms. */
+  /* 允许真实快转，拒绝 2 毫秒内跳变 30° 的传感器数据。 */
   assert(!GimbalSafety_PitchJump(0.0f, 0.03490659f, 2U, 1000U));
   assert(GimbalSafety_PitchJump(0.0f, 0.52359878f, 2U, 1000U));
   assert(GimbalSafety_PitchJump(0.0f, NAN, 2U, 1000U));
-  puts("gimbal fault guard: CAN payload/output injections and IMU boundaries passed");
+
+  /* 500 Hz 下连续 150 周期对应 300 毫秒。短峰值或禁用 Pitch 不应锁存过流故障。 */
+  volatile uint16_t count = 0U;
+  assert(!GimbalSafety_Overcurrent(5.0f, 1U, 5.0f, 150U, &count));
+  assert(!GimbalSafety_Overcurrent(-5.0f, 1U, 5.0f, 150U, &count));
+  for (unsigned i = 0U; i < 149U; i++)
+    assert(!GimbalSafety_Overcurrent(5.1f, 1U, 5.0f, 150U, &count));
+  assert(!GimbalSafety_Overcurrent(4.9f, 1U, 5.0f, 150U, &count));
+  assert(count == 0U);
+  for (unsigned i = 0U; i < 149U; i++)
+    assert(!GimbalSafety_Overcurrent(-5.1f, 1U, 5.0f, 150U, &count));
+  assert(GimbalSafety_Overcurrent(-5.1f, 1U, 5.0f, 150U, &count));
+  assert(count == 150U);
+  assert(GimbalSafety_Overcurrent(-5.1f, 1U, 5.0f, 150U, &count));
+  assert(count == 150U); /* 计数饱和而不回绕。 */
+  assert(!GimbalSafety_Overcurrent(NAN, 0U, 5.0f, 150U, &count));
+  assert(count == 0U);
+  assert(!GimbalSafety_Overcurrent(6.0f, 0U, 5.0f, 150U, &count));
+  assert(GimbalSafety_Overcurrent(NAN, 1U, 5.0f, 150U, &count));
+  assert(GimbalSafety_Overcurrent(INFINITY, 1U, 5.0f, 150U, &count));
+  puts("gimbal fault guard: CAN, IMU and sustained/disabled-axis current checks passed");
   return 0;
 }

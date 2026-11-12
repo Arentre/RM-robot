@@ -1,6 +1,6 @@
 function fit = fit_pitch_sweep_compensation(data, expectedRate)
-% Pair opposite, nearly constant velocities at equal IMU angles.
-% This cancels Coulomb + viscous friction instead of trusting stiction holds.
+% 在相同 IMU 角度配对方向相反、大小近似恒定的角速度。
+% 用配对消去库仑及黏性摩擦，避免把静摩擦保持输出误判为重力。
 assert(license('test','Statistics_Toolbox') && license('test','Signal_Toolbox'), ...
     'Statistics and Signal Processing toolboxes are required.');
 if nargin<2, expectedRate=6; end

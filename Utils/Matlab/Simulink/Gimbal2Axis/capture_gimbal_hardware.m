@@ -1,13 +1,13 @@
 function data = capture_gimbal_hardware(port, duration_s)
-% Record the USB CDC FireWater telemetry from the STM32.
-% port may be a serialport object or a COM port name such as "COM7".
+% 记录 STM32 USB CDC 的 FireWater 遥测。
+% port 可传入 serialport 对象或串口名称，例如 COM7。
 if nargin < 2, duration_s = 10; end
 validateattributes(duration_s, {'numeric'}, {'scalar','finite','positive'});
 if ischar(port) || (isstring(port) && isscalar(port))
     s = serialport(port, 115200);
 elseif isobject(port) && isprop(port, 'NumBytesAvailable')
-    % In R2024a the public serialport object may report its implementation
-    % class as internal.Serialport, so do not rely on isa(port,'serialport').
+    % R2024a 的 serialport 对象实际类名可能为 internal.Serialport。
+    % 因此不要依赖 isa(port,'serialport') 来识别串口对象。
     s = port;
 else
     error('port must be a COM port name or an existing serialport object.');
@@ -52,18 +52,18 @@ while toc(t0) < duration_s
         continue
     end
     if numel(values) == 26
-        values(27:35,1) = NaN; % compatibility with firmware before bench protocol
+        values(27:35,1) = NaN; % 兼容台架协议之前的固件
     elseif numel(values) == 34
-        values(35,1) = NaN; % compatibility with firmware before friction FF
+        values(35,1) = NaN; % 兼容未输出摩擦前馈的固件
     end
     if numel(values) == 35
-        values(36:41,1) = NaN; % compatibility with firmware before raw IMU fields
+        values(36:41,1) = NaN; % 兼容未输出原始 IMU 通道的固件
     end
     if numel(values) == 41
-        values(42:43,1) = NaN; % compatibility with firmware before roll/speed
+        values(42:43,1) = NaN; % 兼容未输出横滚和弹速的固件
     end
     if numel(values) == 43
-        values(44:47,1) = NaN; % compatibility before CAN/current diagnostics
+        values(44:47,1) = NaN; % 兼容未输出 CAN 和电流诊断的固件
     end
     n = n + 1;
     if n > size(samples, 1), samples(end+100, :) = 0; end %#ok<AGROW>

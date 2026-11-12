@@ -1,5 +1,5 @@
 function summary = evaluate_gimbal_chirp_models(estimationData,validationData)
-% Compare preprocessing and model orders before accepting a plant model.
+% 在接受模型前，比较不同预处理方法和模型阶次。
 inputModes = ["current","command","friction_compensated","closed_loop"];
 cutoffs_Hz = [2.5 3 4 6];
 orders = [1 0;2 0;2 1;3 1;3 2];

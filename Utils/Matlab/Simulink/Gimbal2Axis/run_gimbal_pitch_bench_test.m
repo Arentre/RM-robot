@@ -1,8 +1,9 @@
-function data = run_gimbal_pitch_bench_test(port, step_deg)
-% Run a monitored Pitch step and return to the enable pose.
-if nargin < 2, step_deg = 0.5; end
+function data = run_gimbal_pitch_bench_test(port, step_deg, outputLimit)
+% 执行受监控的 Pitch 阶跃并回到使能姿态。
+if nargin < 2, step_deg = 2.0; end
+if nargin < 3, outputLimit = 0.40; end
 validateattributes(step_deg,{'numeric'}, ...
-    {'scalar','real','finite','positive','<=',30.0});
+    {'scalar','real','finite','nonzero','>=',-5.0,'<=',5.0});
 s = getPort(port);
 configureTerminator(s,'LF');
 s.Timeout = 0.25;
@@ -12,15 +13,16 @@ pause(0.1);
 flush(s,'input');
 stopGuard = onCleanup(@() safeStop(s));
 
-writeline(s,'ENABLE=1');
-pause(0.05);
-writeline(s,'PITCH=1');
-[a,t0,origin] = collectPhase(s,1.5,0,NaN,NaN);
-writeline(s,sprintf('PITREL=%.3f',step_deg));
-moveTime = max(3.0,0.15*step_deg);
-[b,~,~] = collectPhase(s,moveTime,1,t0,origin);
-writeline(s,'CENTER');
-[c,~,~] = collectPhase(s,moveTime,2,t0,origin);
+gimbal_usb_command(s,'STOP','ack:STOP');
+[yawBudget,yawLimit] = gimbal_bench_budget(s,'Y',0.30);
+[pitchBudget,pitchLimit] = gimbal_bench_budget(s,'P',outputLimit);
+limits = [yawLimit,pitchLimit];
+gimbal_usb_command(s,'ENABLE=1','ack:ENABLE,');
+[a,t0,origin] = collectPhase(s,1.5,0,NaN,NaN,limits);
+gimbal_usb_command(s,sprintf('PITREL=%.3f',step_deg),'ack:PITREL=');
+[b,~,~] = collectPhase(s,3.0,1,t0,origin,limits);
+gimbal_usb_command(s,'CENTER','ack:CENTER');
+[c,~,~] = collectPhase(s,3.0,2,t0,origin,limits);
 writeline(s,'HOLD');
 pause(0.1);
 writeline(s,'STOP');
@@ -52,7 +54,7 @@ nexttile; plot(data.TestTime_s,data.PitchOutput,'k', ...
 grid on; title('Command / actual current');
 legend('Normalized output','Current (A)','Location','best');
 nexttile; plot(data.TestTime_s,data.PitchTravel_deg,'r');
-yline(35,'r:'); yline(-35,'r:'); grid on;
+yline(7,'r:'); yline(-7,'r:'); grid on;
 title('Travel from enable pose'); ylabel('deg'); xlabel('MCU time (s)');
 nexttile; plot(data.TestTime_s,data.PitchTemp_C,'r');
 grid on; title('Motor temperature'); ylabel('deg C'); xlabel('MCU time (s)');
@@ -63,31 +65,32 @@ fprintf(['Pitch test complete: peak travel %.2f deg, peak rate %.1f deg/s, ' ...
 fprintf('Saved %s and %s\n',csvPath,pngPath);
 end
 
-function [rows,firstMcuTime,origin] = collectPhase(s,duration_s,phase,firstMcuTime,origin)
+function [rows,firstMcuTime,origin] = collectPhase(s,duration_s,phase,firstMcuTime,origin,limits)
 rows = zeros(0,44);
 t0 = tic; lastPing = tic; lastFrame = tic; enableGrace = 0.30;
 while toc(t0) < duration_s
     if toc(lastPing) >= 0.25, writeline(s,'PING'); lastPing = tic; end
+    if toc(lastFrame) > 0.6
+        writeline(s,'STOP'); error('No valid telemetry for 0.6 s; STOP sent.');
+    end
     if s.NumBytesAvailable == 0
-        if toc(lastFrame) > 0.6
-            writeline(s,'STOP'); error('Telemetry timeout; STOP sent.');
-        end
         pause(0.002); continue
     end
     line = strtrim(string(readline(s)));
     if ~startsWith(line,'yaw:'), continue; end
     v = str2double(split(extractAfter(line,4),','));
-    if ~(numel(v) == 35 || numel(v) == 41 || numel(v) == 43) || ...
+    if ~(numel(v) == 35 || numel(v) == 41 || numel(v) == 43 || numel(v) == 47) || ...
             any(~isfinite(v)), continue; end
-    if numel(v) == 35, v(36:41) = NaN; end
+    if numel(v) == 35, v(36:43) = NaN; end
     if numel(v) == 41, v(42:43) = NaN; end
+    v = v(1:43);
     lastFrame = tic;
     if phase == 0 && toc(t0) < enableGrace && (v(12) == 0 || v(22) == 0)
         continue
     end
     if isnan(firstMcuTime), firstMcuTime = v(27); end
     if isnan(origin), origin = v(14); end
-    assertSafe(s,v,origin);
+    assertSafe(s,v,origin,limits);
     rows(end+1,:) = [v(:).',phase]; %#ok<AGROW>
 end
 if isempty(rows)
@@ -96,15 +99,16 @@ if isempty(rows)
 end
 end
 
-function assertSafe(s,v,origin)
+function assertSafe(s,v,origin,limits)
 reason = v(32);
 travel = v(14)-origin;
 if reason ~= 0 || v(10) ~= 0 || v(12) == 0 || v(22) == 0
     writeline(s,'STOP');
     error('Controller stopped or protected: stop reason %.0f.',reason);
 end
-if abs(travel) > 35.5 || abs(v(15)) > 180 || abs(v(20)) > 0.301 || ...
-        abs(v(29)) > 0.45 || v(31) > 80
+if abs(travel) > 7 || abs(v(15)) > 120 || abs(v(20)) > limits(2)+0.001 || ...
+        abs(v(8)) > limits(1)+0.001 || abs(v(34)) > 12 || abs(v(3)) > 150 || ...
+        any(abs(v(28:29)) > 1.60) || any(v(30:31) > 80)
     writeline(s,'STOP');
     error(['Pitch safety threshold exceeded; STOP sent. Travel %.2f deg, ' ...
         'rate %.1f deg/s, output %.3f, current %.3f A, temp %.1f C.'], ...

@@ -1,8 +1,9 @@
-function data = run_gimbal_bench_test(port, step_deg)
-% Run a bounded Yaw step and return using the protected USB bench protocol.
+function data = run_gimbal_bench_test(port, step_deg, outputLimit)
+% 通过受保护的 USB 台架协议执行有限幅的 Yaw 阶跃和返回。
 if nargin < 2, step_deg = 30.0; end
+if nargin < 3, outputLimit = 0.45; end
 validateattributes(step_deg, {'numeric'}, ...
-    {'scalar','real','finite','positive','<=',30.0});
+    {'scalar','real','finite','nonzero','>=',-30.0,'<=',30.0});
 s = getPort(port);
 configureTerminator(s, 'LF');
 s.Timeout = 0.25;
@@ -12,14 +13,16 @@ pause(0.1);
 flush(s, 'input');
 stopGuard = onCleanup(@() safeStop(s));
 
-writeline(s, 'ENABLE=1');
-[a, t0] = collectPhase(s, 1.5, 0, NaN);
-writeline(s, sprintf('YAWREL=%.3f', step_deg));
-wakeTime = max(3.0,0.15*step_deg);
-[b, ~] = collectPhase(s, wakeTime, 1, t0);
-writeline(s, 'CENTER');
-[c, ~] = collectPhase(s, wakeTime, 2, t0);
-writeline(s, 'HOLD');
+gimbal_usb_command(s,'STOP','ack:STOP');
+[budgetGuard,limit] = gimbal_bench_budget(s,'Y',outputLimit);
+gimbal_usb_command(s,'ENABLE=YAW','ack:ENABLE,');
+[a, t0] = collectPhase(s, 1.5, 0, NaN, limit);
+gimbal_usb_command(s,sprintf('YAWREL=%.3f',step_deg),'ack:YAWREL=');
+wakeTime = max(3.0,0.15*abs(step_deg));
+[b, ~] = collectPhase(s, wakeTime, 1, t0, limit);
+gimbal_usb_command(s,'CENTER','ack:CENTER');
+[c, ~] = collectPhase(s, wakeTime, 2, t0, limit);
+gimbal_usb_command(s,'HOLD','ack:HOLD');
 pause(0.1);
 writeline(s, 'STOP');
 
@@ -66,37 +69,33 @@ fprintf(['Bench test complete: peak travel %.2f deg, peak rate %.1f deg/s, ' ...
 fprintf('Saved %s and %s\n',csvPath,pngPath);
 end
 
-function [rows, firstMcuTime] = collectPhase(s, duration_s, phase, firstMcuTime)
+function [rows, firstMcuTime] = collectPhase(s, duration_s, phase, firstMcuTime, limit)
 rows = zeros(0,44);
 t0 = tic;
-lastPing = tic;
 lastFrame = tic;
 enableGrace = 0.30;
 while toc(t0) < duration_s
-    if toc(lastPing) >= 0.25
-        writeline(s,'PING');
-        lastPing = tic;
+    if toc(lastFrame) > 0.6
+        writeline(s,'STOP');
+        error('No valid telemetry for 0.6 s; STOP sent.');
     end
     if s.NumBytesAvailable == 0
-        if toc(lastFrame) > 0.6
-            writeline(s,'STOP');
-            error('Telemetry timeout; STOP sent.');
-        end
         pause(0.002);
         continue
     end
     line = strtrim(string(readline(s)));
     if ~startsWith(line,'yaw:'), continue; end
     v = str2double(split(extractAfter(line,4),','));
-    if ~(numel(v) == 35 || numel(v) == 41 || numel(v) == 43) || ...
+    if ~(numel(v) == 35 || numel(v) == 41 || numel(v) == 43 || numel(v) == 47) || ...
             any(~isfinite(v)), continue; end
     if numel(v) == 35, v(36:43) = NaN; end
     if numel(v) == 41, v(42:43) = NaN; end
+    v = v(1:43);
     lastFrame = tic;
-    % A telemetry line already queued before ENABLE may still report Enable=0.
+    % 使能前排队的旧遥测可能仍然显示 Enable=0。
     if phase == 0 && toc(t0) < enableGrace && v(12) == 0, continue; end
     if isnan(firstMcuTime), firstMcuTime = v(27); end
-    assertSafe(s,v);
+    assertSafe(s,v,limit);
     rows(end+1,:) = [v(:).',phase]; %#ok<AGROW>
 end
 if isempty(rows)
@@ -105,14 +104,14 @@ if isempty(rows)
 end
 end
 
-function assertSafe(s,v)
+function assertSafe(s,v,limit)
 reason = v(32);
-if reason ~= 0 || v(10) ~= 0 || v(12) == 0
+if reason ~= 0 || v(10) ~= 0 || v(12) == 0 || v(22) ~= 0
     writeline(s,'STOP');
     error('Controller stopped or protected: stop reason %.0f.',reason);
 end
-if abs(v(34)) > 35.5 || abs(v(3)) > 180 || abs(v(8)) > 0.151 || ...
-        abs(v(28)) > 0.60 || v(30) > 80
+if abs(v(34)) > 35.5 || abs(v(3)) > 180 || abs(v(8)) > limit+0.001 || ...
+        abs(v(28)) > 1.60 || v(30) > 80
     writeline(s,'STOP');
     error(['Safety threshold exceeded; STOP sent. Travel %.2f deg, ' ...
         'rate %.1f deg/s, output %.3f, current %.3f A, temp %.1f C.'], ...

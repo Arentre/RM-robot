@@ -1,5 +1,5 @@
 function metrics = pitch_hil_metrics(data, outputLimit)
-% Each phase must independently pass settling and quiet-hold criteria.
+% 各阶段分别检查到位和稳定保持条件。
 if nargin < 2, outputLimit = 0.10; end
 phases = unique(data.Phase(data.Phase>=1),'stable'); metrics = table();
 for phase = phases.'

@@ -1,5 +1,5 @@
 function report = preflight_gimbal_hardware(port, duration_s)
-% Read-only preflight. Sends STOP first and never enables either motor.
+% 先发 STOP，再只读检查状态，全程不使能电机。
 if nargin < 2, duration_s = 3; end
 s = getPort(port);
 configureTerminator(s,'LF');

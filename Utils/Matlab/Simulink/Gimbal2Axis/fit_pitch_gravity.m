@@ -1,6 +1,6 @@
 function fit = fit_pitch_gravity(input)
-% Bidirectional settled holding output -> sin/cos gravity in controller units.
-% Robust regression (Statistics Toolbox), not an assumed inertia/gravity model.
+% 由双向到位后的保持输出拟合控制器单位下的正弦、余弦重力项。
+% 使用统计工具箱做稳健回归，不依赖假设的惯量或重力模型。
 assert(license('test','Statistics_Toolbox'),'Statistics Toolbox is required.');
 if isstruct(input), d=input.Data; elseif istable(input), d=input; else, d=readtable(input); end
 active=d.Phase>=1 & abs(d.PitchLadrcOutput)>0.0005;
@@ -26,7 +26,7 @@ X=[sin(theta) cos(theta)]; y=holds.HoldingOutput;
 [coef,stats]=robustfit(X,y,'bisquare',4.685,'off');
 prediction=X*coef; residual=y-prediction;
 amplitude=norm(coef); phase=rad2deg(atan2(coef(2),coef(1)));
-% Leave-one-target-out validation prevents a narrow noisy scan looking perfect.
+% 每次留出一个目标点验证，避免狭小的带噪扫描看起来拟合很好。
 targets=unique(round(holds.Target_deg,2)); cv=[]; hysteresis=[];
 for target=targets.'
     mask=abs(holds.Target_deg-target)<0.05;

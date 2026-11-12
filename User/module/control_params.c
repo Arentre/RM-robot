@@ -1,10 +1,10 @@
 #include "module/control_params.h"
 
-/* Single entry point for PID, LADRC and feedforward tuning. */
+/* 集中维护 PID、LADRC 和前馈默认参数。 */
 
-/* PID gains: normalized output, motor speed in RPM, angles in radians.
- * HERO differences are retained because Flash may select that hardware. */
-/*                            k, p, i, d, integral limit, output limit, D cutoff, wrap range */
+/* PID 的输出为归一化指令，电机转速单位为 RPM，角度单位为弧度。
+ * Flash 可能选用英雄车配置，因此保留相应参数。 */
+/* 依次为增益、比例、积分、微分、积分限幅、输出限幅、微分截止频率和回绕范围。 */
 #define PID_PARAMS(k_, p_, i_, d_, integral_, output_, cutoff_, range_) \
   { .k = (k_), .p = (p_), .i = (i_), .d = (d_), .i_limit = (integral_), \
     .out_limit = (output_), .d_cutoff_freq = (cutoff_), .range = (range_) }
@@ -45,7 +45,7 @@ static const Config_RobotParam_t param_default = {
 			.yaw = false,
 		},
 
-  }, /* chassis */
+  }, /* 底盘参数 */
 
   .gimbal = { /* 云台模块参数 */
     .pid = {
@@ -53,7 +53,7 @@ static const Config_RobotParam_t param_default = {
       [GIMBAL_PID_YAW_ANGLE_IDX] = TUNE_GIMBAL_YAW_ANGLE,
       [GIMBAL_PID_PIT_OMEGA_IDX] = TUNE_GIMBAL_PIT_OMEGA,
       [GIMBAL_PID_PIT_ANGLE_IDX] = TUNE_GIMBAL_PIT_ANGLE,
-    }, /* pid */
+    }, /* 控制环参数 */
 
     .pitch_travel_rad = 1.05f,
 
@@ -66,7 +66,7 @@ static const Config_RobotParam_t param_default = {
       .yaw = false,
       .pit = false,
     },
-  }, /* gimbal */
+  }, /* 云台参数 */
 
   .shoot = { /* 射击模块参数 */
 
@@ -90,14 +90,14 @@ static const Config_RobotParam_t param_default = {
     .model = SHOOT_MODEL_17MM,
     .bullet_speed = 25.f,
     .min_shoot_delay = (uint32_t)(1000.0f / 10.0f),
-  }, /* shoot */
+  }, /* 发射机构参数 */
 
   .can = {
     .chassis = BSP_CAN_1,
     .gimbal = BSP_CAN_2,
     .shoot = BSP_CAN_2,
-    }, /* can */
-}; /* param_default */
+    }, /* 总线配置 */
+}; /* 默认机器人参数 */
 
 static const Config_RobotParam_t param_hero = {
   .model = ROBOT_MODEL_HERO,
@@ -117,7 +117,7 @@ static const Config_RobotParam_t param_hero = {
 		.reverse = {
 			.yaw = true,
 		},
-  }, /* chassis */
+  }, /* 底盘参数 */
 
   .gimbal = { /* 云台模块参数 */
     .pid = {
@@ -125,7 +125,7 @@ static const Config_RobotParam_t param_hero = {
       [GIMBAL_PID_YAW_ANGLE_IDX] = TUNE_GIMBAL_YAW_ANGLE,
       [GIMBAL_PID_PIT_OMEGA_IDX] = TUNE_GIMBAL_PIT_OMEGA_HERO,
       [GIMBAL_PID_PIT_ANGLE_IDX] = TUNE_GIMBAL_PIT_ANGLE_HERO,
-    }, /* pid */
+    }, /* 控制环参数 */
 
 		.pitch_travel_rad = 1.07685447f,
 
@@ -138,7 +138,7 @@ static const Config_RobotParam_t param_hero = {
       .yaw = true,
       .pit = false,
     },
-  }, /* gimbal */
+  }, /* 云台参数 */
 
   .shoot = { /* 射击模块参数 */
 
@@ -162,14 +162,14 @@ static const Config_RobotParam_t param_hero = {
     .model = SHOOT_MODEL_42MM,
     .bullet_speed = 16.0f,
     .min_shoot_delay = (uint32_t)(1000.0f / 10.0f),
-  }, /* shoot */
+  }, /* 发射机构参数 */
 
   .can = {
     .chassis = BSP_CAN_1,
     .gimbal = BSP_CAN_2,
     .shoot = BSP_CAN_2,
-    }, /* can */
-}; /* param_hero */
+    }, /* 总线配置 */
+}; /* 英雄机器人参数 */
 
 static const Config_PilotCfg_t cfg_qs = {
   .param = {
@@ -242,50 +242,53 @@ const Config_PilotCfgMap_t pilot_cfg_map[] = {
     {NULL, NULL},
 };
 
-/* Gimbal: LADRC enabled by default; PID is the Yaw fallback.
- * Disabling Pitch LADRC keeps Pitch output at zero. */
+/* 默认使用 LADRC；Yaw 可回退到 PID，关闭 Pitch LADRC 后 Pitch 无输出。 */
 volatile uint8_t gimbal_ladrc_yaw_enable = 1U;
 volatile uint8_t gimbal_ladrc_pit_enable = 1U;
-/* Runtime Pitch-only output shaping. Bypass until hardware validation. */
+/* 仅在运行时调整 Pitch 输出滤波，默认旁路。 */
 volatile float gimbal_pitch_output_filter_hz = 0.0f;
 
-/* 2026-10-07 实机扫频和两次 30 deg 往返验证后的 Yaw 参数。 */
+/* 这些增益来自轻载台架，装车后应重新辨识 b0。装车配置允许使用归一化指令的全量程。 */
 volatile LADRC_Params_t gimbal_ladrc_yaw_param = {
     .r = 10.0f, .b0 = 500.0f, .wc = 12.0f, .w0 = 40.0f,
-    .out_limit = 0.30f, .deadband_rad = 0.00349066f}; /* 0.2 deg */
+    .out_limit = GIMBAL_NORMALIZED_OUTPUT_MAX,
+    .deadband_rad = 0.00872665f}; /* 0.5° */
 volatile LADRC_Params_t gimbal_ladrc_pit_param = {
     .r = 13.0f, .b0 = 550.0f, .wc = 7.0f, .w0 = 22.0f,
-    .out_limit = 0.3f, .deadband_rad = 0.00523599f}; /* 0.3 deg */
+    .out_limit = GIMBAL_NORMALIZED_OUTPUT_MAX,
+    .deadband_rad = 0.00872665f}; /* 0.5° */
+/* 低速起动附加助力，设为 0 时关闭对应轴。 */
+volatile float gimbal_yaw_breakaway_max = 0.065f;
+volatile float gimbal_pitch_breakaway_max = 0.075f;
 volatile uint8_t gimbal_yaw_dither_enable = 0U;
 volatile float gimbal_yaw_dither_amplitude = 0.008f;
 volatile float gimbal_yaw_dither_frequency_hz = 25.0f;
 volatile float gimbal_yaw_dither_output = 0.0f;
 
-/* Friction/gravity feedforward defaults. */
+/* 摩擦和重力前馈的默认参数。 */
 volatile GimbalFrictionComp_t gimbal_yaw_friction = {
     .enable = 1U,
-    .static_output = 0.035f,
-    .coulomb_output = 0.020f,
+    .static_output = 0.060f,
+    .coulomb_output = 0.025f,
     .deadband_rad = 0.00349066f,
     .transition_rad_s = 0.08726646f,
-    .slew_per_s = 0.12f,
+    .slew_per_s = 0.20f,
     .output = 0.0f};
 
 volatile GimbalFrictionComp_t gimbal_pitch_friction = {
     .enable = 1U,
-    .static_output = 0.020f,
-    .coulomb_output = 0.010f,
+    .static_output = 0.070f,
+    .coulomb_output = 0.025f,
     .deadband_rad = 0.00523599f,
     .transition_rad_s = 0.08726646f,
-    .slew_per_s = 0.12f,
+    .slew_per_s = 0.20f,
     .output = 0.0f};
 
-/* Gravity compensation stays disabled until its sign and amplitude are
- * identified on the assembled pitch mechanism. */
+/* 在装配完成的 Pitch 机构上辨识补偿方向和幅值之前，保持重力补偿关闭。 */
 volatile GimbalGravityComp_t gimbal_pitch_gravity = {
     .enable = 0U, .amplitude = 0.0f, .phase_rad = 0.0f, .output = 0.0f};
 
-/* BMI088 heater control. */
+/* BMI088 加热控制参数。 */
 const KPID_Params_t imu_temp_ctrl_pid_param = {
     .k = 0.15f,
     .p = 1.0f,

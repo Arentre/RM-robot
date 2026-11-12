@@ -1,5 +1,5 @@
 function [fit,model] = fit_gimbal_rate_tfest(t,w,current,phase,Kt)
-% Fit omega/current = Kt/(J*s+B) with System Identification Toolbox.
+% 使用系统辨识工具箱拟合电流到角速度模型 Kt/(J*s+B)。
 assert(license('test','Identification_Toolbox') && exist('tfest','file') == 2, ...
     'System Identification Toolbox is unavailable.');
 phase = string(phase);

@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <string.h>
 
-#define LADRC_DEADBAND_ENTER_RATE_RAD_S 0.03490659f /* 2 deg/s */
-#define LADRC_DEADBAND_EXIT_RATE_RAD_S 0.05235988f  /* 3 deg/s */
+#define LADRC_DEADBAND_ENTER_RATE_RAD_S 0.03490659f /* 2°/s */
+#define LADRC_DEADBAND_EXIT_RATE_RAD_S 0.05235988f  /* 3°/s */
 #define LADRC_DEADBAND_SETTLE_TIME_S 0.020f
 
 static float LADRC_Limit(float value, float limit) {
@@ -18,7 +18,7 @@ static float LADRC_Limit(float value, float limit) {
 float LADRC_UpdateAngle(LADRC_t *ctrl, float reference, float feedback,
                         float angular_speed) {
   if (ctrl == NULL) return 0.0f;
-  /* Shift position states together; derivative histories are rates, not angles. */
+  /* 位置状态一起平移；导数历史是速度，不随角度平移。 */
   if (fabsf(ctrl->z1) >= ANGLE_TRACK_TAU) {
     const float offset = truncf(ctrl->z1 / ANGLE_TRACK_TAU) * ANGLE_TRACK_TAU;
     ctrl->z1 -= offset;
@@ -83,9 +83,7 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
   const float abs_error = fabsf(reference - feedback);
   const float abs_rate = fabsf(rate_feedback);
 
-  /* Deadband is a settled-state hold, not an angle-only output switch.
-   * A moving chassis can repeatedly carry the feedback through zero error;
-   * measured-rate gating keeps derivative braking active during that pass. */
+  /* 仅在误差和角速度均满足条件时进入到位状态。底盘运动可能使误差反复过零，速度判定让控制器在快速过零时保留制动。 */
   if (ctrl->param.deadband_rad > 0.0f) {
     if (ctrl->deadband_active != 0U) {
       const uint8_t stay_settled =
@@ -113,7 +111,7 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
     ctrl->deadband_settle_time = 0.0f;
   }
 
-  /* LTD: transition the requested angle smoothly. */
+  /* LTD：平滑过渡到目标角度。 */
   const float fh = -ctrl->param.r * ctrl->param.r * (ctrl->v1 - reference)
                    - 2.0f * ctrl->param.r * ctrl->v2;
   ctrl->v2 += ctrl->half_T * (fh + ctrl->v2_i);
@@ -121,7 +119,7 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
   ctrl->v2_i = fh;
   ctrl->v1_i = ctrl->v2;
 
-  /* LESO: observe angle, speed and lumped disturbance using last output. */
+  /* LESO：用上次输出估计角度、角速度和总扰动。 */
   const float e = ctrl->z1 - feedback;
   const float dz3 = -ctrl->beta3 * e;
   const float dz2 = ctrl->z3 - ctrl->beta2 * e + ctrl->param.b0 * ctrl->output;
@@ -133,9 +131,7 @@ float LADRC_Update(LADRC_t *ctrl, float reference, float feedback,
   ctrl->z2_i = dz2;
   ctrl->z1_i = dz1;
 
-  /* LSEF: use the measured angular speed continuously in the derivative
-   * feedback term.  Keep the LESO speed state for disturbance observation;
-   * this avoids replacing the observer state with a noisy sensor sample. */
+  /* LSEF：导数反馈使用实测角速度。保留 LESO 的速度状态估计扰动，避免用带噪声的采样替换观测器状态。 */
   const float u0 = ctrl->kp * (ctrl->v1 - ctrl->z1) +
                    ctrl->kd * (ctrl->v2 - rate_feedback);
   const float output = (u0 - ctrl->z3) / ctrl->param.b0;

@@ -1,6 +1,6 @@
-/* VOFA+ FireWater USB telemetry task. */
+/* 通过 USB 输出 VOFA+ FireWater 遥测并处理调参命令。 */
 
-/* Includes ----------------------------------------------------------------- */
+/* 头文件 */
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,10 +10,10 @@
 #include "module/gimbal.h"
 #include "task/user_task.h"
 
-/* Private typedef ---------------------------------------------------------- */
-/* Private define ----------------------------------------------------------- */
-/* Private macro ------------------------------------------------------------ */
-/* Private variables -------------------------------------------------------- */
+/* 私有类型 */
+/* 私有常量 */
+/* 私有宏 */
+/* 私有变量 */
 extern Gimbal_t gimbal;
 extern volatile uint8_t gimbal_pitch_protect_active;
 extern volatile uint8_t gimbal_test_enable;
@@ -29,7 +29,7 @@ extern volatile float gimbal_yaw_dither_amplitude;
 extern volatile float gimbal_yaw_dither_frequency_hz;
 volatile GimbalTargetInput_t gimbal_target_input = {0};
 
-/* Exact sp_vision_25 VisionToGimbal wire layout, 29 bytes packed. */
+/* 与 sp_vision_25 的 VisionToGimbal 二进制布局一致，共 29 字节。 */
 typedef struct __attribute__((packed)) {
   uint8_t head[2];
   uint8_t mode;
@@ -46,7 +46,7 @@ typedef char VisionToGimbalPacketSizeCheck[
 
 static void Gimbal_SerialStop(uint8_t reason);
 
-/* Caller holds the kernel lock.  Incrementing revision last is the commit. */
+/* 调用方必须持有内核锁，最后更新版本号以提交目标。 */
 static void Gimbal_TargetCommitLocked(void) {
   gimbal_target_input.update_tick = osKernelGetTickCount();
   gimbal_target_input.revision++;
@@ -87,8 +87,7 @@ static uint8_t Gimbal_ParseTrajectory(const uint8_t *data, uint16_t length) {
     BSP_USB_Printf("err:V2G,crc\r\n");
     return 1U;
   }
-  /* Mode 0 is the reference idle command. Mode 2 would imply a fire command,
-   * which is not wired to this bench adapter. */
+  /* 模式 0 表示空闲；模式 2 涉及开火，台架适配器没有接入开火控制。 */
   if (!isfinite(packet.yaw) ||
       !isfinite(packet.yaw_vel) || !isfinite(packet.yaw_acc) ||
       !isfinite(packet.pitch) || !isfinite(packet.pitch_vel) ||
@@ -131,7 +130,7 @@ static uint8_t Gimbal_ParseTrajectory(const uint8_t *data, uint16_t length) {
   osKernelUnlock();
   return 1U;
 }
-/* Private function --------------------------------------------------------- */
+/* 私有函数 */
 static float FireWater_Safe(float value) {
   return isfinite(value) ? value : 0.0f;
 }
@@ -277,8 +276,7 @@ static void Gimbal_CalibrateGyro(void) {
 
   Config_t cfg;
   Config_Get(&cfg);
-  /* Measurements are already corrected by the active static offset, so the
-   * remaining stationary mean is added to that offset. */
+  /* 采样值已扣除当前静态零偏，因此把剩余的静止均值叠加到原零偏。 */
   cfg.cali.bmi088.gyro_offset.x =
       task_runtime.cfg.cali.bmi088.gyro_offset.x + mean[0];
   cfg.cali.bmi088.gyro_offset.y =
@@ -312,7 +310,7 @@ static void Gimbal_CalibrateGyro(void) {
       deviation[2] * M_RAD2DEG_MULT);
 }
 
-/* Bench commands are ASCII lines terminated by CR or LF. */
+/* 台架命令使用 ASCII，以回车或换行结尾。 */
 static void Gimbal_PrintFault(void) {
   GimbalFaultSnapshot_t fault;
   GimbalProtectionStatus_t live;
@@ -358,10 +356,83 @@ static void Gimbal_PrintFault(void) {
   return;
 }
 
+/* 台架校准在两轴卸力时手动采集端点。结果只存 RAM 并打印建议限位，不驱动电机顶住机械限位。 */
+static void Gimbal_PitchCalibrate(const char *action) {
+  static float angle[2];
+  static uint8_t captured;
+  const float margin_deg = 5.0f;
+  if (strcmp(action, "RESET") == 0) {
+    captured = 0U;
+    BSP_USB_Printf("ack:PCAL,reset\r\n");
+    return;
+  }
+  if (strcmp(action, "SHOW") == 0) {
+    if (captured != 3U) {
+      BSP_USB_Printf("err:PCAL,need_both_endpoints\r\n");
+      return;
+    }
+    const float low = fminf(angle[0], angle[1]);
+    const float high = fmaxf(angle[0], angle[1]);
+    const float bound = GIMBAL_PITCH_SAFE_LIMIT_RAD * M_RAD2DEG_MULT;
+    const float safe_low = fmaxf(low + margin_deg, -bound);
+    const float safe_high = fminf(high - margin_deg, bound);
+    if (safe_low >= safe_high) {
+      BSP_USB_Printf("err:PCAL,insufficient_travel\r\n");
+      return;
+    }
+    BSP_USB_Printf("ack:PCAL,measured_deg=%.3f,%.3f,suggested_deg=%.3f,%.3f\r\n",
+                   low, high, safe_low, safe_high);
+    return;
+  }
+  const uint8_t first = strcmp(action, "LOW") == 0;
+  if (!first && strcmp(action, "HIGH") != 0) {
+    BSP_USB_Printf("err:PCAL,use_RESET_LOW_HIGH_SHOW\r\n");
+    return;
+  }
+  osKernelLock();
+  const uint8_t relaxed = gimbal.mode == GIMBAL_MODE_RELAX &&
+      gimbal_serial_control_active == 0U && gimbal_test_enable == 0U;
+  const float pitch = gimbal.feedback.eulr.imu.pit;
+  const float pitch_rate = gimbal.feedback.eulr_rate.y;
+  const float encoder = gimbal.feedback.eulr.encoder.pit;
+  const uint8_t fresh = gimbal_protection_status.imu_age_ms <= 20U &&
+      gimbal_protection_status.accl_age_ms <= 20U &&
+      gimbal_protection_status.feedback_age_ms[GIMBAL_ACTR_PIT_IDX] <= 150U &&
+      gimbal_protection_status.feedback_count[GIMBAL_ACTR_PIT_IDX] != 0U;
+  osKernelUnlock();
+  if (!relaxed) {
+    BSP_USB_Printf("err:PCAL,stop_and_relax_first\r\n");
+    return;
+  }
+  if (!fresh || !isfinite(pitch) || !isfinite(encoder) ||
+      !isfinite(pitch_rate) || fabsf(pitch_rate) > 0.05f) {
+    BSP_USB_Printf("err:PCAL,hold_still_check_feedback\r\n");
+    return;
+  }
+  const uint8_t index = first ? 0U : 1U;
+  angle[index] = pitch * M_RAD2DEG_MULT;
+  captured |= (uint8_t)(1U << index);
+  BSP_USB_Printf("ack:PCAL,%s,imu_deg=%.3f,encoder_deg=%.3f\r\n",
+                 action, angle[index], Angle_Degrees360(encoder));
+}
+
 static void Gimbal_ParseCommand(char *cmd) {
-  /* Command names are case insensitive; numeric exponents also accept E. */
+  /* 命令名不区分大小写；数字指数接受大写 E。 */
   for (char *p = cmd; *p != '\0'; ++p) {
     if (*p >= 'a' && *p <= 'z') *p = (char)(*p - 'a' + 'A');
+  }
+  if (strcmp(cmd, "HELP") == 0) {
+    BSP_USB_Printf("ack:HELP,STOP ENABLE=1 ENABLE=YAW GET FAULT IMU GCAL HOLD CENTER "
+                   "PITCH=0/1 PCAL=RESET/LOW/HIGH/SHOW "
+                   "YAWREL= YAWABS= PITREL= PITABS=\r\n"
+                   "tuning: YCHIRP=UP/DOWN YPARAM= PPARAM= YDEAD= PDEAD= "
+                   "YFF= YFFPARAM= PFF= PFFPARAM= PGRAV= PGRAVPARAM= "
+                   "PFILTER= YDITHER= YDITHERPARAM=\r\n");
+    return;
+  }
+  if (strncmp(cmd, "PCAL=", 5) == 0) {
+    Gimbal_PitchCalibrate(cmd + 5);
+    return;
   }
   if (strcmp(cmd, "STOP") == 0 || strcmp(cmd, "ENABLE=0") == 0) {
     Gimbal_SerialStop(GIMBAL_TEST_STOP_COMMAND);
@@ -405,7 +476,8 @@ static void Gimbal_ParseCommand(char *cmd) {
     return;
   }
 
-  if (strcmp(cmd, "ENABLE=1") == 0) {
+  if (strcmp(cmd, "ENABLE=1") == 0 || strcmp(cmd, "ENABLE=YAW") == 0) {
+    const uint8_t pitch_enabled = cmd[7] == '1';
     const float yaw = gimbal.feedback.eulr.imu.yaw;
     const float pit = gimbal.feedback.eulr.imu.pit;
     if (!isfinite(yaw) || !isfinite(pit)) {
@@ -423,7 +495,8 @@ static void Gimbal_ParseCommand(char *cmd) {
     gimbal_pit_test_origin_rad = pit;
     Gimbal_TargetSetHoldLocked(yaw, pit);
     gimbal_ladrc_yaw_enable = 1U;
-    gimbal_ladrc_pit_enable = 0U;
+    /* 先选定双轴或仅 Yaw，再发布使能状态。 */
+    gimbal_ladrc_pit_enable = pitch_enabled;
     gimbal_test_stop_reason = GIMBAL_TEST_STOP_NONE;
     gimbal_yaw_chirp_active = 0U;
     gimbal_serial_control_active = 1U;
@@ -586,7 +659,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       BSP_USB_Printf("err:PFILTER,range\r\n");
       return;
     }
-    /* Change shaping between trials, never while applying motor current. */
+    /* 仅在两次试验之间、没有施加电流时修改输出滤波。 */
     osKernelLock();
     if (gimbal_test_enable != 0U || gimbal_serial_control_active != 0U) {
       osKernelUnlock();
@@ -599,104 +672,51 @@ static void Gimbal_ParseCommand(char *cmd) {
     return;
   }
 
-  if (strncmp(cmd, "YPARAM=", 7) == 0) {
-    LADRC_Params_t p = {.deadband_rad = gimbal_ladrc_yaw_param.deadband_rad};
+  if (strncmp(cmd, "YPARAM=", 7) == 0 || strncmp(cmd, "PPARAM=", 7) == 0) {
+    volatile LADRC_Params_t *params = cmd[0] == 'Y' ?
+        &gimbal_ladrc_yaw_param : &gimbal_ladrc_pit_param;
+    LADRC_Params_t p = {.deadband_rad = params->deadband_rad};
     if (Gimbal_ParseLADRCParams(cmd + 7, &p) == 0U ||
         Gimbal_LADRCParamsSafe(&p, GIMBAL_NORMALIZED_OUTPUT_MAX) == 0U) {
-      BSP_USB_Printf("err:YPARAM,range\r\n");
+      BSP_USB_Printf("err:%cPARAM,range\r\n", cmd[0]);
       return;
     }
     osKernelLock();
-    gimbal_ladrc_yaw_param = p;
+    *params = p;
     osKernelUnlock();
-    BSP_USB_Printf("ack:YPARAM\r\n");
+    BSP_USB_Printf("ack:%cPARAM\r\n", cmd[0]);
     return;
   }
 
-  if (strncmp(cmd, "PPARAM=", 7) == 0) {
-    LADRC_Params_t p = {.deadband_rad = gimbal_ladrc_pit_param.deadband_rad};
-    if (Gimbal_ParseLADRCParams(cmd + 7, &p) == 0U ||
-        Gimbal_LADRCParamsSafe(&p, GIMBAL_NORMALIZED_OUTPUT_MAX) == 0U) {
-      BSP_USB_Printf("err:PPARAM,range\r\n");
-      return;
-    }
-    osKernelLock();
-    gimbal_ladrc_pit_param = p;
-    osKernelUnlock();
-    BSP_USB_Printf("ack:PPARAM\r\n");
+  if (strcmp(cmd, "YFF=0") == 0 || strcmp(cmd, "YFF=1") == 0 ||
+      strcmp(cmd, "PFF=0") == 0 || strcmp(cmd, "PFF=1") == 0) {
+    volatile GimbalFrictionComp_t *friction = cmd[0] == 'Y' ?
+        &gimbal_yaw_friction : &gimbal_pitch_friction;
+    friction->enable = cmd[4] == '1' ? 1U : 0U;
+    BSP_USB_Printf("ack:%cFF=%u\r\n", cmd[0], (unsigned int)friction->enable);
     return;
   }
 
-  if (strcmp(cmd, "YFF=0") == 0 || strcmp(cmd, "YFF=1") == 0) {
-    gimbal_yaw_friction.enable = cmd[4] == '1' ? 1U : 0U;
-    BSP_USB_Printf("ack:YFF=%u\r\n",
-                   (unsigned int)gimbal_yaw_friction.enable);
-    return;
-  }
-
-  if (strncmp(cmd, "YFFPARAM=", 9) == 0) {
-    float value[5];
-    const char *cursor = cmd + 9;
-    uint8_t valid = 1U;
-    for (uint8_t k = 0U; k < 5U; k++) {
-      char *end;
-      value[k] = strtof(cursor, &end);
-      if (end == cursor || !isfinite(value[k])) {
-        valid = 0U;
-        break;
-      }
-      if (k < 4U) {
-        if (*end != ',') {
-          valid = 0U;
-          break;
-        }
-        cursor = end + 1;
-      } else if (*end != '\0') {
-        valid = 0U;
-      }
-    }
-    if (valid == 0U || value[0] < 0.0f || value[0] > 0.06f ||
-        value[1] < 0.0f || value[1] > value[0] || value[2] < 0.2f ||
-        value[2] > 3.0f || value[3] < 2.0f || value[3] > 30.0f ||
-        value[4] < 0.02f || value[4] > 0.50f) {
-      BSP_USB_Printf("err:YFFPARAM,range\r\n");
-      return;
-    }
-    osKernelLock();
-    gimbal_yaw_friction.static_output = value[0];
-    gimbal_yaw_friction.coulomb_output = value[1];
-    gimbal_yaw_friction.deadband_rad = value[2] * M_DEG2RAD_MULT;
-    gimbal_yaw_friction.transition_rad_s = value[3] * M_DEG2RAD_MULT;
-    gimbal_yaw_friction.slew_per_s = value[4];
-    osKernelUnlock();
-    BSP_USB_Printf("ack:YFFPARAM\r\n");
-    return;
-  }
-
-  if (strcmp(cmd, "PFF=0") == 0 || strcmp(cmd, "PFF=1") == 0) {
-    gimbal_pitch_friction.enable = cmd[4] == '1' ? 1U : 0U;
-    BSP_USB_Printf("ack:PFF=%u\r\n",
-                   (unsigned int)gimbal_pitch_friction.enable);
-    return;
-  }
-
-  if (strncmp(cmd, "PFFPARAM=", 9) == 0) {
+  if (strncmp(cmd, "YFFPARAM=", 9) == 0 ||
+      strncmp(cmd, "PFFPARAM=", 9) == 0) {
     float value[5];
     if (Gimbal_ParseFive(cmd + 9, value) == 0U || value[0] < 0.0f ||
-        value[0] > 0.06f || value[1] < 0.0f || value[1] > value[0] ||
+        value[0] > 0.10f || value[1] < 0.0f || value[1] > value[0] ||
         value[2] < 0.2f || value[2] > 3.0f || value[3] < 2.0f ||
         value[3] > 30.0f || value[4] < 0.02f || value[4] > 0.50f) {
-      BSP_USB_Printf("err:PFFPARAM,range\r\n");
+      BSP_USB_Printf("err:%cFFPARAM,range\r\n", cmd[0]);
       return;
     }
+    volatile GimbalFrictionComp_t *friction = cmd[0] == 'Y' ?
+        &gimbal_yaw_friction : &gimbal_pitch_friction;
     osKernelLock();
-    gimbal_pitch_friction.static_output = value[0];
-    gimbal_pitch_friction.coulomb_output = value[1];
-    gimbal_pitch_friction.deadband_rad = value[2] * M_DEG2RAD_MULT;
-    gimbal_pitch_friction.transition_rad_s = value[3] * M_DEG2RAD_MULT;
-    gimbal_pitch_friction.slew_per_s = value[4];
+    friction->static_output = value[0];
+    friction->coulomb_output = value[1];
+    friction->deadband_rad = value[2] * M_DEG2RAD_MULT;
+    friction->transition_rad_s = value[3] * M_DEG2RAD_MULT;
+    friction->slew_per_s = value[4];
     osKernelUnlock();
-    BSP_USB_Printf("ack:PFFPARAM\r\n");
+    BSP_USB_Printf("ack:%cFFPARAM\r\n", cmd[0]);
     return;
   }
 
@@ -774,8 +794,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
 
-    /* Check state and commit under the same lock: a protection stop must
-     * not race with this command and leave a new target marked valid. */
+    /* 状态检查和目标提交共用同一把锁，避免保护停机与写目标竞争后仍把目标标为有效。 */
     osKernelLock();
     if (gimbal_serial_control_active == 0U || gimbal_test_enable == 0U) {
       osKernelUnlock();
@@ -789,8 +808,7 @@ static void Gimbal_ParseCommand(char *cmd) {
       return;
     }
     float target = yaw_relative ? feedback : 0.0f;
-    /* Normalize large values before converting to radians and wrapping.
-     * Yaw still follows the shortest path to a wrapped orientation. */
+    /* 先归一化大角度再转换为弧度。Yaw 按单圈姿态选择最短路径。 */
     CircleAdd(&target, fmodf(degree, 360.0f) * M_DEG2RAD_MULT, M_2PI);
     gimbal_yaw_chirp_active = 0U;
     Gimbal_TargetClearTrajectoryLocked();
@@ -845,10 +863,10 @@ static void Gimbal_ParseCommand(char *cmd) {
   BSP_USB_Printf("err:UNKNOWN\r\n");
 }
 
-/* Exported functions ------------------------------------------------------- */
+/* 对外函数 */
 
 /**
- * \brief Output gimbal data using the VOFA+ FireWater text protocol.
+ * \brief 按 VOFA+ FireWater 文本协议输出云台数据。
  *
  * \param argument 未使用
  */
@@ -857,7 +875,7 @@ void Task_Info(void *argument) {
 
   const uint32_t delay_tick = osKernelGetTickFreq() / TASK_FREQ_INFO;
 
-  /* Wait for USB enumeration and the first gimbal samples. */
+  /* 等待 USB 枚举和首批云台采样。 */
   osDelay(TASK_INIT_DELAY_INFO);
   BSP_USB_ReadyReceive(osThreadGetId());
 
@@ -886,8 +904,7 @@ void Task_Info(void *argument) {
             cmd[cmd_len] = '\0';
             if (cmd_len != 0U && cmd_overflow == 0U) {
               Gimbal_ParseCommand(cmd);
-              /* Long commands such as GCAL must not leave the periodic deadline
-               * several seconds behind and cause a telemetry burst. */
+              /* GCAL 等长命令执行后重新安排遥测周期，避免补发大量积压帧。 */
               tick = osKernelGetTickCount();
             }
             if (cmd_overflow != 0U) BSP_USB_Printf("err:COMMAND,too_long\r\n");
@@ -945,7 +962,7 @@ void Task_Info(void *argument) {
     uint16_t yaw_current_mismatch_count;
     uint16_t pit_current_mismatch_count;
 
-    /* Copy one coherent sample; do not print while the kernel is locked. */
+    /* 锁内复制同一时刻的数据，解锁后再打印。 */
     osKernelLock();
     yaw_sp = gimbal.setpoint.eulr.yaw;
     yaw_fb = gimbal.feedback.eulr.imu.yaw;
@@ -997,7 +1014,7 @@ void Task_Info(void *argument) {
     accl_y = gimbal.feedback.accl.y;
     accl_z = gimbal.feedback.accl.z;
     roll_fb = gimbal.feedback.eulr.imu.rol;
-    bullet_speed_mps = 0.0f; /* No measured bullet-speed source in this build. */
+    bullet_speed_mps = 0.0f; /* 本固件没有弹速测量来源。 */
     can_tx_last_success_tick = gimbal_can_tx_health.last_success_tick;
     can_tx_failure_count = gimbal_can_tx_health.failure_count;
     yaw_current_mismatch_count =
@@ -1030,30 +1047,13 @@ void Task_Info(void *argument) {
     const float yaw_angle_error =
         FireWater_Safe(CircleError(yaw_sp, yaw_fb, M_2PI) * M_RAD2DEG_MULT);
     const float yaw_sp_continuous = yaw_fb_continuous + yaw_angle_error;
-    /* Pitch Euler feedback is signed (-90..+90 deg); do not wrap it into
-     * [0..360) for telemetry. The control loop remains in radians. */
+    /* Pitch 欧拉角带符号（−90° 到 +90°），遥测不回绕为 0° 到 360°；闭环内部仍使用弧度。 */
     const float pit_fb_degrees = pit_fb * M_RAD2DEG_MULT;
     const float pit_angle_error =
         FireWater_Safe(CircleError(pit_sp, pit_fb, M_2PI) * M_RAD2DEG_MULT);
     const float pit_sp_degrees = pit_sp * M_RAD2DEG_MULT;
 
-    /* FireWater yaw channels, in order:
-     * target/feedback continuous angle (deg), angular speed (deg/s),
-     * signed angle error (deg), active controller angle error (deg),
-     * target/error speed
-     * (deg/s), motor output (unchanged), encoder angle (0..360 deg),
-     * pitch_protect, mode, enable. Pitch channels are then appended:
-     * target/feedback angle (deg), angular speed (deg/s), signed angle error
-     * (deg), controller angle error (deg), target/error speed (deg/s), motor
-     * output, encoder angle (0..360 deg), LADRC enable and target valid.
-     * Finally: limited Pitch reference (deg), limit active, LADRC output,
-     * MCU time (s), actual GM6020 currents (A), temperatures (deg C), stop
-     * reason, Yaw enable origin and travel (deg), then filtered BMI088 gyro
-     * x/y/z (deg/s), accelerometer x/y/z (g), roll (deg), and measured bullet
-     * speed (m/s) for the sp_vision_25 host adapter. CAN TX age (ms),
-     * cumulative TX failures, and Yaw/Pitch current mismatch duration (ms)
-     * are appended for actuator-path diagnosis.
-     */
+    /* FireWater 字段按固定顺序输出：Yaw 状态（1–12 列）、Pitch 状态（13–26 列）、MCU 时间和双轴电流温度等（27–35 列）、IMU 原始通道及横滚和弹速（36–43 列）、CAN 发送诊断和双轴连续过流时间（44–47 列）。修改注释时不要调整字段顺序或单位。 */
     BSP_USB_Printf(
         "yaw:%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%u,"
         "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%u,%u,%.6f,%u,%.6f,"

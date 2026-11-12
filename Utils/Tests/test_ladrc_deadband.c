@@ -19,8 +19,7 @@ static LADRC_t make_controller(float tolerance_deg, float wc, float w0) {
 static void check_axis(float tolerance_deg, float wc, float w0) {
   LADRC_t ctrl = make_controller(tolerance_deg, wc, w0);
 
-  /* Stiction left a large disturbance estimate and nonzero motor output.
-   * Settled feedback with realistic small noise must stay quiet for 20 s. */
+  /* 静摩擦可能造成扰动估计和输出残留。带少量噪声的到位反馈应持续 20 秒保持安静。 */
   ctrl.z3 = -100.0f;
   ctrl.output = 0.2f;
   for (int i = 0; i < 10000; ++i) {
@@ -34,7 +33,7 @@ static void check_axis(float tolerance_deg, float wc, float w0) {
     }
   }
 
-  /* Hysteresis avoids chatter just outside the entry tolerance. */
+  /* 滞回避免误差刚超过进入阈值时反复切换。 */
   assert(LADRC_Update(&ctrl, 0.0f, tolerance_deg * DEG_RAD * 1.2f, 0.0f) == 0.0f);
   assert(ctrl.deadband_active != 0U);
   LADRC_Update(&ctrl, 0.0f, tolerance_deg * DEG_RAD * 1.6f, 0.0f);
@@ -45,7 +44,7 @@ static void check_axis(float tolerance_deg, float wc, float w0) {
     LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
   assert(ctrl.deadband_active != 0U);
 
-  /* Angle alone is insufficient: low speed must remain stable for 20 ms. */
+  /* 不能只凭角度到位；低速条件必须保持 20 毫秒。 */
   LADRC_Reset(&ctrl, 0.0f, 0.0f);
   for (int i = 0; i < 8; ++i)
     LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
@@ -58,19 +57,19 @@ static void check_axis(float tolerance_deg, float wc, float w0) {
   LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
   assert(ctrl.deadband_active != 0U);
 
-  /* Rate hysteresis holds at 2.5 deg/s and exits immediately above 3 deg/s. */
+  /* 2.5°/s 时保持到位状态，超过 3°/s 立即退出。 */
   assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 2.5f * DEG_RAD) == 0.0f);
   assert(ctrl.deadband_active != 0U);
   assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 3.1f * DEG_RAD) < 0.0f);
   assert(ctrl.deadband_active == 0U);
 
-  /* Do not remove braking while passing through the target at speed. */
+  /* 快速经过目标时不能撤掉制动。 */
   assert(LADRC_Update(&ctrl, 0.0f, 0.0f, 3.0f * DEG_RAD) < 0.0f);
   assert(ctrl.deadband_active == 0U);
   LADRC_Reset(&ctrl, 0.0f, 0.0f);
   assert(LADRC_Update(&ctrl, 0.0f, 0.0f, -3.0f * DEG_RAD) > 0.0f);
 
-  /* A new 20-degree command exits immediately in either direction. */
+  /* 正负方向新的 20° 指令都应立即退出到位状态。 */
   LADRC_Reset(&ctrl, 0.0f, 0.0f);
   LADRC_Update(&ctrl, 0.0f, 0.0f, 0.0f);
   assert(LADRC_Update(&ctrl, 20.0f * DEG_RAD, 0.0f, 0.0f) > 0.0f);
@@ -80,7 +79,7 @@ static void check_axis(float tolerance_deg, float wc, float w0) {
   assert(LADRC_Update(&ctrl, -20.0f * DEG_RAD, 0.0f, 0.0f) < 0.0f);
   assert(ctrl.deadband_active == 0U);
 
-  /* Unavailable gyro still falls back to the observer's speed. */
+  /* 陀螺仪不可用时回退到观测器估计速度。 */
   LADRC_Reset(&ctrl, 0.0f, 0.0f);
   ctrl.z2 = 3.0f * DEG_RAD;
   assert(LADRC_Update(&ctrl, 0.0f, 0.0f, NAN) < 0.0f);
@@ -91,7 +90,17 @@ int main(void) {
   check_axis(0.2f, 12.0f, 40.0f);
   check_axis(0.3f, 8.0f, 30.0f);
 
-  /* Zero tolerance restores the continuous controller. */
+  /* 新平台容许小于 1° 的误差，但 1° 阶跃应重新启动控制。 */
+  check_axis(0.5f, 12.0f, 40.0f);
+  check_axis(0.5f, 7.0f, 22.0f);
+  LADRC_t relaxed = make_controller(0.5f,12.0f,40.0f);
+  for (int i = 0; i < 16; ++i) LADRC_Update(&relaxed,0.0f,0.0f,0.0f);
+  assert(relaxed.deadband_active != 0U);
+  assert(LADRC_UpdateAngle(&relaxed,0.6f * DEG_RAD,0.0f,0.0f) == 0.0f);
+  assert(LADRC_UpdateAngle(&relaxed,1.0f * DEG_RAD,0.0f,0.0f) > 0.0f);
+  assert(relaxed.deadband_active == 0U);
+
+  /* 零容差恢复连续控制。 */
   LADRC_t ctrl = make_controller(0.0f, 12.0f, 40.0f);
   assert(LADRC_Update(&ctrl, 0.1f * DEG_RAD, 0.0f, 0.0f) > 0.0f);
   assert(ctrl.deadband_active == 0U);

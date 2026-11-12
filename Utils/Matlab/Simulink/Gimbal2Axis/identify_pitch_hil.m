@@ -1,5 +1,5 @@
 function result = identify_pitch_hil(data)
-% Independent closed-loop TF validation plus integral physical cross-check.
+% 独立验证闭环传递函数，并用积分物理模型交叉核对。
 assert(license('test','Identification_Toolbox') && ...
     license('test','Optimization_Toolbox') && license('test','Signal_Toolbox'), ...
     'System Identification, Optimization, Signal Processing toolboxes required.');
@@ -11,7 +11,7 @@ u=interp1(t,d.PitchOutput,tu,'linear');
 target=interp1(t,deg2rad(d.PitchTarget_deg),tu,'previous');
 phase=interp1(t,d.Phase,tu,'previous');
 [bf,af]=butter(3,12/(0.5/Ts)); wf=filtfilt(bf,af,w);
-% Integral windows avoid differentiating the measured gyro.
+% 用积分时间窗避免对陀螺仪数据求导。
 n=round(.12/Ts); q=(1:3:numel(tu)-n).'; A=zeros(numel(q),5); y=zeros(numel(q),1);
 moving=false(size(q)); split=false(size(q));
 for k=1:numel(q)
@@ -36,8 +36,8 @@ result=struct('PhysicalB0',coef(1),'ViscousRate',coef(2), ...
     'PhysicalValidationRelativeRMSE',relRmse,'PhysicalCondition',cond(As(est,:)), ...
     'PhysicalReliable',relRmse<.25 && cond(As(est,:))<50 && ...
         coef(1)>11 && coef(1)<1999,'SampleTime_s',Ts);
-% Feedback-loop reference->angle ID is safer to interpret than a biased
-% closed-loop torque->rate tfest. Keep it separate from the physical fit.
+% 闭环目标到角度模型更适合解释跟踪效果。
+% 单独报告该模型，不和可能有偏的力矩到角速度模型混用。
 mid=floor(numel(tu)/2);
 zEst=iddata(angle(1:mid),target(1:mid),Ts);
 zVal=iddata(angle(mid+1:end),target(mid+1:end),Ts);
@@ -57,7 +57,7 @@ fprintf('Physical b0 %.2f, friction %.6f, gravity %.6f phase %.1f; validation re
     result.PhysicalB0,result.CoulombCommand,result.GravityAmplitude, ...
     result.GravityPhase_deg,relRmse,result.PhysicalReliable);
 fprintf('System Identification Toolbox independent closed-loop fits: 2p %.1f%% / 3p %.1f%%\n',fits);
-% Signal Processing Toolbox: inspect the worst settled-phase oscillation.
+% 用信号处理工具箱检查到位阶段最明显的振荡。
 worstRms=-Inf; spectrum=struct();
 for p=unique(phase).'
     indices=find(phase==p); indices=indices(tu(indices)>=tu(indices(end))-1);

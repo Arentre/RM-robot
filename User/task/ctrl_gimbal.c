@@ -7,20 +7,20 @@
   根据接收到的控制命令，控制电机输出。
 */
 
-/* Includes ----------------------------------------------------------------- */
+/* 头文件 */
 #include <math.h>
 
 #include "component/gimbal_safety.h"
 #include "module/gimbal.h"
 #include "task/user_task.h"
 
-/* Private typedef ---------------------------------------------------------- */
-/* Private define ----------------------------------------------------------- */
-/* Private macro ------------------------------------------------------------ */
-/* Private variables -------------------------------------------------------- */
+/* 私有类型 */
+/* 私有常量 */
+/* 私有宏 */
+/* 私有变量 */
 static CAN_t can;
 
-/* Exposed read-only to the low-priority USB telemetry task. */
+/* 供低优先级 USB 遥测任务只读。 */
 Gimbal_t gimbal;
 CAN_GimbalOutput_t gimbal_out;
 
@@ -57,14 +57,13 @@ static uint16_t gyro_overrate_count;
 #define GIMBAL_BINARY_TRAJECTORY_TIMEOUT_MS (250U)
 #define GIMBAL_CAN_TX_TIMEOUT_MS (100U)
 #define GIMBAL_CAN_RX_TIMEOUT_MS (150U)
-#define GIMBAL_CURRENT_COMMAND_MIN_A (0.60f)
-#define GIMBAL_CURRENT_TRACKING_MIN_RATIO (0.10f)
-#define GIMBAL_CURRENT_MISMATCH_TIME_MS (300U)
-#define GIMBAL_CURRENT_STARTUP_GRACE_MS (200U)
+#define GIMBAL_OVERCURRENT_LIMIT_A (5.0f)
+#define GIMBAL_OVERCURRENT_TIME_MS (1000U)
+#define GIMBAL_CURRENT_STARTUP_GRACE_MS (500U)
 #define GIMBAL_GYRO_OVERRATE_TIME_MS (10U)
 #define GIMBAL_REMOTE_TIMEOUT_MS (150U)
 
-/* Private function --------------------------------------------------------- */
+/* 私有函数 */
 static void Gimbal_TargetCopyLocked(GimbalTargetInput_t *target) {
   target->yaw_rad = gimbal_target_input.yaw_rad;
   target->pitch_rad = gimbal_target_input.pitch_rad;
@@ -140,9 +139,12 @@ static void Gimbal_UpdateLinkStatus(uint32_t now) {
 }
 
 static uint8_t Gimbal_CANRxUnsafe(void) {
-  for (uint8_t i = 0U; i < GIMBAL_ACTR_NUM; i++)
+  for (uint8_t i = 0U; i < GIMBAL_ACTR_NUM; i++) {
+    /* 关闭 Yaw LADRC 后仍运行 PID 回退控制。 */
+    if (i == GIMBAL_ACTR_PIT_IDX && gimbal_ladrc_pit_enable == 0U) continue;
     if (gimbal_protection_status.feedback_age_ms[i] > GIMBAL_CAN_RX_TIMEOUT_MS)
       return 1U;
+  }
   return 0U;
 }
 
@@ -160,31 +162,23 @@ static uint8_t Gimbal_ActuatorCurrentUnsafe(void) {
     actuator_startup_count++;
     return 0U;
   }
-  const float command_current[GIMBAL_ACTR_NUM] = {
-      gimbal.out[GIMBAL_ACTR_YAW_IDX] * CAN_GM6020_MAX_ABS_CUR,
-      gimbal.out[GIMBAL_ACTR_PIT_IDX] * CAN_GM6020_MAX_ABS_CUR};
   const float feedback_current[GIMBAL_ACTR_NUM] = {
       gimbal.feedback.motor.yaw_current,
       gimbal.feedback.motor.pit_current};
-  const uint16_t mismatch_limit =
-      (uint16_t)((GIMBAL_CURRENT_MISMATCH_TIME_MS *
+  const uint16_t overcurrent_limit =
+      (uint16_t)((GIMBAL_OVERCURRENT_TIME_MS *
                   TASK_FREQ_CTRL_GIMBAL + 999U) /
                  1000U);
 
   uint8_t unsafe = 0U;
   for (uint8_t i = 0U; i < GIMBAL_ACTR_NUM; i++) {
-    const float command = command_current[i];
-    const float feedback = feedback_current[i];
-    const uint8_t tracking =
-        isfinite(command) && isfinite(feedback) && command * feedback > 0.0f &&
-        fabsf(feedback) >=
-            GIMBAL_CURRENT_TRACKING_MIN_RATIO * fabsf(command);
-    if (fabsf(command) < GIMBAL_CURRENT_COMMAND_MIN_A || tracking != 0U) {
-      gimbal_actuator_mismatch_count[i] = 0U;
-    } else if (gimbal_actuator_mismatch_count[i] < mismatch_limit) {
-      gimbal_actuator_mismatch_count[i]++;
-    }
-    if (gimbal_actuator_mismatch_count[i] >= mismatch_limit) unsafe = 1U;
+    /* 沿用遥测客户端已有的符号和字段；现在统计连续过流，不再统计电流跟踪失配。 */
+    const uint8_t enabled =
+        i != GIMBAL_ACTR_PIT_IDX || gimbal_ladrc_pit_enable != 0U;
+    if (GimbalSafety_Overcurrent(feedback_current[i], enabled,
+          GIMBAL_OVERCURRENT_LIMIT_A, overcurrent_limit,
+          &gimbal_actuator_mismatch_count[i]) != 0U)
+      unsafe = 1U;
   }
   return unsafe;
 }
@@ -245,7 +239,7 @@ static void Gimbal_TripLocked(uint8_t reason, uint32_t now) {
   Gimbal_ActuatorGuardReset();
 }
 
-/* Exported functions ------------------------------------------------------- */
+/* 对外函数 */
 
 /**
  * \brief 控制云台
@@ -269,7 +263,7 @@ void Task_CtrlGimbal(void *argument) {
   /* 等待电机反馈和IMU数据就绪后再开启控制。 */
   osMessageQueueGet(task_runtime.msgq.can.feedback.gimbal, &can, NULL,
                     osWaitForever);
-  /* Allow cold-start sensor setup before treating missing IMU as a fault. */
+  /* 冷启动时给传感器初始化留时间，再判断 IMU 缺失是否为故障。 */
   if (osMessageQueueGet(task_runtime.msgq.gimbal.sample, &imu_sample, NULL,
                         osKernelGetTickFreq()) == osOK) {
     imu_seen = 1U;
@@ -321,8 +315,7 @@ void Task_CtrlGimbal(void *argument) {
     Gimbal_UpdateFeedback(&gimbal, &can);
     Gimbal_UpdateLinkStatus(control_now);
 
-    /* Generate and publish chirp targets under the same lock as serial target
-     * writes.  The revision is committed only after the angle is complete. */
+    /* 扫频和串口写目标共用同一把锁；角度完整写入后才更新版本号。 */
     if (gimbal_yaw_chirp_active != 0U) {
       const float elapsed =
           (float)(control_now - gimbal_yaw_chirp_start_tick) /
@@ -456,7 +449,7 @@ void Task_CtrlGimbal(void *argument) {
         const float predicted_pitch =
             target.pitch_rad + target.pitch_velocity_rad_s * elapsed +
             0.5f * target.pitch_acceleration_rad_s2 * elapsed * elapsed;
-        /* Finite trajectories saturate at the shared soft limit in the module. */
+        /* 有限轨迹在云台模块的共用软限位处饱和。 */
         if (!isfinite(predicted_pitch))
           stop_reason = GIMBAL_TEST_STOP_INVALID_TARGET;
       }
@@ -524,7 +517,7 @@ void Task_CtrlGimbal(void *argument) {
 
 
     tick += delay_tick; /* 计算下一个唤醒时刻 */
-    /* A late task must not issue a burst of catch-up control cycles. */
+    /* 任务超时后不要连续补跑控制周期。 */
     if ((int32_t)(tick - osKernelGetTickCount()) <= 0)
       tick = osKernelGetTickCount() + delay_tick;
     osDelayUntil(tick); /* 运行结束，等待下一次唤醒 */

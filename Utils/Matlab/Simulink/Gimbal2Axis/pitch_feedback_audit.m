@@ -1,5 +1,5 @@
 function audit = pitch_feedback_audit(data)
-% Compare independently measured motion; filtering is identical for all rates.
+% 对比独立测得的运动，各角速度通道使用同样的滤波。
 assert(license('test','Signal_Toolbox') && license('test','Statistics_Toolbox'), ...
     'Signal Processing and Statistics toolboxes are required.');
 d=data(data.Phase>=1,:);
