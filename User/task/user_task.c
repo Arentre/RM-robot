@@ -73,3 +73,9 @@ const osThreadAttr_t attr_rc = {
     .stack_size = 384 * 4,
 };
 
+const osThreadAttr_t attr_nav_link = {
+    .name = "nav_link",
+    .priority = osPriorityHigh,
+    .stack_size = 256 * 4,
+};
+

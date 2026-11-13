@@ -34,6 +34,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     User/device/bmi088.c
     User/device/can.c
     User/device/crsf.c
+    User/device/nav_link.c
     User/device/ai.c
     User/module/chassis.c
     User/module/config.c

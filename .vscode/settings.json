@@ -43,5 +43,18 @@
       "task": "RM-C: flash Debug via DFU",
       "tooltip": "先编译，再通过 USB DFU 烧录 Debug 固件；开发板需先进入 DFU 模式"
     }
+  ],
+  "cmake.cmakePath": "cube-cmake",
+  "cmake.configureArgs": [
+    "-DCMAKE_COMMAND=cube-cmake"
+  ],
+  "cmake.preferredGenerators": [
+    "Ninja"
+  ],
+  "stm32cube-ide-clangd.path": "cube",
+  "stm32cube-ide-clangd.arguments": [
+    "starm-clangd",
+    "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gcc*",
+    "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-g++*"
   ]
 }

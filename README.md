@@ -1,6 +1,6 @@
 # RM C 板工程（CLion / ARM GCC）
 
-已按四个机构、自瞄、CRSF 遥控、基础外设及 USB 调试精简；详见 [代码结构与调参](docs/代码结构与调参.md)。所有 PID、LADRC 和前馈默认参数统一在 `User/module/control_params.c`。
+已按四个机构、自瞄、CRSF 遥控、USART6 导航链路、基础外设及 USB 调试精简；详见 [代码结构与调参](docs/代码结构与调参.md)。所有 PID、LADRC 和前馈默认参数统一在 `User/module/control_params.c`。
 
 VS Code 的编译、补全、ST-LINK 和 Codex 使用方式见 [VS Code 开发环境](docs/VSCode开发环境.md)。
 

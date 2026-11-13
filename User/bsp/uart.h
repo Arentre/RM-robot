@@ -28,6 +28,8 @@ typedef enum {
 /* Physical connector UART2 maps to STM32 USART1. */
 #define BSP_UART_ELRS BSP_UART_USART1
 #define BSP_UART_AI BSP_UART_USART6
+/* 导航链路与保留的 AI 驱动共用 USART6，不能同时启动。 */
+#define BSP_UART_NAV BSP_UART_USART6
 
 /* UART支持的中断回调函数类型，具体参考HAL中定义 */
 typedef enum {
