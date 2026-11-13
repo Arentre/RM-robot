@@ -83,6 +83,7 @@ typedef struct {
     osThreadId_t atti_esti;
     osThreadId_t ai;
     osThreadId_t rc;
+    osThreadId_t nav_link;
   } thread;
 
   struct {
@@ -162,6 +163,7 @@ extern const osThreadAttr_t attr_can;
 extern const osThreadAttr_t attr_atti_esti;
 extern const osThreadAttr_t attr_ai;
 extern const osThreadAttr_t attr_rc;
+extern const osThreadAttr_t attr_nav_link;
 
 /* Exported functions prototypes -------------------------------------------- */
 void Task_Init(void *argument);
@@ -175,6 +177,7 @@ void Task_Can(void *argument);
 void Task_AttiEsti(void *argument);
 void Task_Ai(void *argument);
 void Task_RC(void *argument);
+void Task_NavLink(void *argument);
 
 #ifdef __cplusplus
 }

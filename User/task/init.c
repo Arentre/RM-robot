@@ -9,6 +9,7 @@
 #include "component/user_math.h"
 #include "device/bmi088.h"
 #include "device/can.h"
+#include "device/nav_link.h"
 #include "module/chassis.h"
 #include "module/gimbal.h"
 #include "module/shoot.h"
@@ -45,6 +46,8 @@ void Task_Init(void *argument) {
   task_runtime.thread.can = osThreadNew(Task_Can, NULL, &attr_can);
   task_runtime.thread.info = osThreadNew(Task_Info, NULL, &attr_info);
   task_runtime.thread.rc = osThreadNew(Task_RC, NULL, &attr_rc);
+  task_runtime.thread.nav_link =
+      osThreadNew(Task_NavLink, NULL, &attr_nav_link);
   task_runtime.thread.ctrl_chassis =
       osThreadNew(Task_CtrlChassis, NULL, &attr_ctrl_chassis);
 
